@@ -8,8 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
-
-type JsonRecord = Record<string, unknown>;
+import {
+  convertParameterReference,
+  isRecord,
+  parameterKind,
+  resolveParameterReference,
+  rewriteOpenApiReference,
+  type JsonRecord,
+} from "./converter-refs";
 
 const SAMPLE_SWAGGER = {
   swagger: "2.0",
@@ -103,13 +109,12 @@ const HTTP_METHODS = new Set([
   "trace",
 ]);
 
-function isRecord(value: unknown): value is JsonRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function rewriteRefs(value: unknown): unknown {
+function rewriteRefs(
+  value: unknown,
+  globalParameters: JsonRecord = {},
+): unknown {
   if (Array.isArray(value)) {
-    return value.map(rewriteRefs);
+    return value.map((item) => rewriteRefs(item, globalParameters));
   }
 
   if (!isRecord(value)) {
@@ -119,24 +124,23 @@ function rewriteRefs(value: unknown): unknown {
   const output: JsonRecord = {};
   for (const [key, nestedValue] of Object.entries(value)) {
     if (key === "$ref" && typeof nestedValue === "string") {
-      output[key] = nestedValue
-        .replace("#/definitions/", "#/components/schemas/")
-        .replace("#/parameters/", "#/components/parameters/")
-        .replace("#/responses/", "#/components/responses/")
-        .replace(
-          "#/securityDefinitions/",
-          "#/components/securitySchemes/",
-        );
+      output[key] = rewriteOpenApiReference(
+        nestedValue,
+        globalParameters,
+      );
     } else {
-      output[key] = rewriteRefs(nestedValue);
+      output[key] = rewriteRefs(nestedValue, globalParameters);
     }
   }
   return output;
 }
 
-function parameterSchema(parameter: JsonRecord): JsonRecord {
+function parameterSchema(
+  parameter: JsonRecord,
+  globalParameters: JsonRecord = {},
+): JsonRecord {
   if (isRecord(parameter.schema)) {
-    return rewriteRefs(parameter.schema) as JsonRecord;
+    return rewriteRefs(parameter.schema, globalParameters) as JsonRecord;
   }
 
   const schemaKeys = [
@@ -161,7 +165,7 @@ function parameterSchema(parameter: JsonRecord): JsonRecord {
 
   for (const key of schemaKeys) {
     if (parameter[key] !== undefined) {
-      schema[key] = rewriteRefs(parameter[key]);
+      schema[key] = rewriteRefs(parameter[key], globalParameters);
     }
   }
 
@@ -189,7 +193,16 @@ function collectionStyle(collectionFormat: unknown, location: unknown) {
   return {};
 }
 
-function convertParameter(parameter: JsonRecord): JsonRecord {
+function convertParameter(
+  parameter: JsonRecord,
+  globalParameters: JsonRecord = {},
+): JsonRecord {
+  const reference = convertParameterReference(
+    parameter,
+    globalParameters,
+  );
+  if (reference) return reference;
+
   const output: JsonRecord = {};
   const preserved = [
     "name",
@@ -206,12 +219,79 @@ function convertParameter(parameter: JsonRecord): JsonRecord {
     }
   }
 
-  output.schema = parameterSchema(parameter);
+  output.schema = parameterSchema(parameter, globalParameters);
   Object.assign(
     output,
     collectionStyle(parameter.collectionFormat, parameter.in),
   );
-  return rewriteRefs(output) as JsonRecord;
+  return rewriteRefs(output, globalParameters) as JsonRecord;
+}
+
+function convertBodyParameter(
+  parameter: JsonRecord,
+  mediaTypes: string[],
+  globalParameters: JsonRecord,
+): JsonRecord {
+  const reference = convertParameterReference(
+    parameter,
+    globalParameters,
+  );
+  if (reference) return reference;
+
+  const content: JsonRecord = {};
+  for (const mediaType of mediaTypes.length > 0
+    ? mediaTypes
+    : ["application/json"]) {
+    content[mediaType] = {
+      schema: parameterSchema(parameter, globalParameters),
+    };
+  }
+
+  return {
+    ...(parameter.description !== undefined
+      ? { description: parameter.description }
+      : {}),
+    ...(parameter.required !== undefined
+      ? { required: parameter.required }
+      : {}),
+    content,
+  };
+}
+
+function convertFormParameters(
+  parameters: JsonRecord[],
+  mediaTypes: string[],
+  globalParameters: JsonRecord,
+): JsonRecord {
+  const properties: JsonRecord = {};
+  const required: string[] = [];
+
+  for (const parameter of parameters) {
+    const resolved =
+      resolveParameterReference(parameter, globalParameters) ??
+      parameter;
+    if (typeof resolved.name !== "string") continue;
+
+    properties[resolved.name] = {
+      ...parameterSchema(resolved, globalParameters),
+      ...(resolved.description
+        ? { description: resolved.description }
+        : {}),
+    };
+    if (resolved.required) required.push(resolved.name);
+  }
+
+  const formSchema: JsonRecord = { type: "object", properties };
+  if (required.length > 0) formSchema.required = required;
+
+  const content: JsonRecord = {};
+  for (const mediaType of mediaTypes.length > 0
+    ? mediaTypes
+    : ["application/x-www-form-urlencoded"]) {
+    content[mediaType] = { schema: formSchema };
+  }
+
+  return { content };
 }
 
 function convertResponse(
@@ -338,15 +418,21 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
     throw new Error('The document is missing the required "paths" object.');
   }
 
+  const globalParameters = isRecord(swagger.parameters)
+    ? swagger.parameters
+    : {};
   const output: JsonRecord = {
     openapi: "3.0.3",
-    info: rewriteRefs(swagger.info),
+    info: rewriteRefs(swagger.info, globalParameters),
   };
 
   const rootFields = ["tags", "externalDocs", "security"];
   for (const field of rootFields) {
     if (swagger[field] !== undefined) {
-      output[field] = rewriteRefs(swagger[field]);
+      output[field] = rewriteRefs(
+        swagger[field],
+        globalParameters,
+      );
     }
   }
 
@@ -378,23 +464,38 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
       continue;
     }
 
+    const inheritedParameters = Array.isArray(rawPath.parameters)
+      ? rawPath.parameters.filter(isRecord)
+      : [];
     const pathItem: JsonRecord = {};
     for (const [pathKey, rawOperation] of Object.entries(rawPath)) {
       if (pathKey === "$ref") {
-        pathItem[pathKey] = rewriteRefs(rawOperation);
+        pathItem[pathKey] = rewriteRefs(
+          rawOperation,
+          globalParameters,
+        );
         continue;
       }
 
       if (pathKey === "parameters" && Array.isArray(rawOperation)) {
         pathItem.parameters = rawOperation
           .filter(isRecord)
-          .filter((parameter) => !["body", "formData"].includes(String(parameter.in)))
-          .map(convertParameter);
+          .filter((parameter) =>
+            ["parameter", "unknown"].includes(
+              parameterKind(parameter, globalParameters),
+            ),
+          )
+          .map((parameter) =>
+            convertParameter(parameter, globalParameters),
+          );
         continue;
       }
 
       if (!HTTP_METHODS.has(pathKey) || !isRecord(rawOperation)) {
-        pathItem[pathKey] = rewriteRefs(rawOperation);
+        pathItem[pathKey] = rewriteRefs(
+          rawOperation,
+          globalParameters,
+        );
         continue;
       }
 
@@ -412,68 +513,57 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
 
       for (const [key, value] of Object.entries(rawOperation)) {
         if (!["parameters", "responses", "consumes", "produces", "schemes"].includes(key)) {
-          operation[key] = rewriteRefs(value);
+          operation[key] = rewriteRefs(value, globalParameters);
         }
       }
 
-      const parameters = Array.isArray(rawOperation.parameters)
+      const operationParameters = Array.isArray(rawOperation.parameters)
         ? rawOperation.parameters.filter(isRecord)
         : [];
-      const regularParameters = parameters.filter(
-        (parameter) => !["body", "formData"].includes(String(parameter.in)),
+      const inheritedRequestParameters = inheritedParameters.filter(
+        (parameter) =>
+          ["body", "formData"].includes(
+            parameterKind(parameter, globalParameters),
+          ),
+      );
+      const requestParameters = [
+        ...operationParameters,
+        ...inheritedRequestParameters,
+      ];
+      const regularParameters = operationParameters.filter(
+        (parameter) =>
+          ["parameter", "unknown"].includes(
+            parameterKind(parameter, globalParameters),
+          ),
       );
       if (regularParameters.length > 0) {
-        operation.parameters = regularParameters.map(convertParameter);
+        operation.parameters = regularParameters.map((parameter) =>
+          convertParameter(parameter, globalParameters),
+        );
       }
 
-      const bodyParameter = parameters.find(
-        (parameter) => parameter.in === "body",
+      const bodyParameter = requestParameters.find(
+        (parameter) =>
+          parameterKind(parameter, globalParameters) === "body",
       );
-      const formParameters = parameters.filter(
-        (parameter) => parameter.in === "formData",
+      const formParameters = requestParameters.filter(
+        (parameter) =>
+          parameterKind(parameter, globalParameters) ===
+          "formData",
       );
 
       if (bodyParameter) {
-        const content: JsonRecord = {};
-        for (const mediaType of operationConsumes.length > 0
-          ? operationConsumes
-          : ["application/json"]) {
-          content[mediaType] = {
-            schema: parameterSchema(bodyParameter),
-          };
-        }
-        operation.requestBody = {
-          ...(bodyParameter.description !== undefined
-            ? { description: bodyParameter.description }
-            : {}),
-          ...(bodyParameter.required !== undefined
-            ? { required: bodyParameter.required }
-            : {}),
-          content,
-        };
+        operation.requestBody = convertBodyParameter(
+          bodyParameter,
+          operationConsumes,
+          globalParameters,
+        );
       } else if (formParameters.length > 0) {
-        const properties: JsonRecord = {};
-        const required: string[] = [];
-        for (const parameter of formParameters) {
-          if (typeof parameter.name !== "string") continue;
-          properties[parameter.name] = {
-            ...parameterSchema(parameter),
-            ...(parameter.description
-              ? { description: parameter.description }
-              : {}),
-          };
-          if (parameter.required) required.push(parameter.name);
-        }
-        const formSchema: JsonRecord = { type: "object", properties };
-        if (required.length > 0) formSchema.required = required;
-
-        const content: JsonRecord = {};
-        for (const mediaType of operationConsumes.length > 0
-          ? operationConsumes
-          : ["application/x-www-form-urlencoded"]) {
-          content[mediaType] = { schema: formSchema };
-        }
-        operation.requestBody = { content };
+        operation.requestBody = convertFormParameters(
+          formParameters,
+          operationConsumes,
+          globalParameters,
+        );
       }
 
       if (isRecord(rawOperation.responses)) {
@@ -502,7 +592,10 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
 
   const components: JsonRecord = {};
   if (isRecord(swagger.definitions)) {
-    components.schemas = rewriteRefs(swagger.definitions);
+    components.schemas = rewriteRefs(
+      swagger.definitions,
+      globalParameters,
+    );
   }
   if (isRecord(swagger.securityDefinitions)) {
     const securitySchemes: JsonRecord = {};
@@ -513,12 +606,34 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
   }
   if (isRecord(swagger.parameters)) {
     const parameters: JsonRecord = {};
+    const requestBodies: JsonRecord = {};
     for (const [name, parameter] of Object.entries(swagger.parameters)) {
-      if (isRecord(parameter) && !["body", "formData"].includes(String(parameter.in))) {
-        parameters[name] = convertParameter(parameter);
+      if (!isRecord(parameter)) continue;
+
+      const kind = parameterKind(parameter, globalParameters);
+      if (kind === "body") {
+        requestBodies[name] = convertBodyParameter(
+          parameter,
+          globalConsumes,
+          globalParameters,
+        );
+      } else if (kind === "formData") {
+        requestBodies[name] = convertFormParameters(
+          [parameter],
+          globalConsumes,
+          globalParameters,
+        );
+      } else {
+        parameters[name] = convertParameter(
+          parameter,
+          globalParameters,
+        );
       }
     }
     if (Object.keys(parameters).length > 0) components.parameters = parameters;
+    if (Object.keys(requestBodies).length > 0) {
+      components.requestBodies = requestBodies;
+    }
   }
   if (isRecord(swagger.responses)) {
     const responses: JsonRecord = {};
