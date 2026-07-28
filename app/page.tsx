@@ -536,7 +536,7 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
 
 function countOperations(paths: unknown) {
   if (!isRecord(paths)) return 0;
-  return Object.values(paths).reduce((count, path) => {
+  return Object.values(paths).reduce<number>((count, path) => {
     if (!isRecord(path)) return count;
     return (
       count +
