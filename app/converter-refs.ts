@@ -14,13 +14,24 @@ function decodePointerToken(value: string): string {
   return value.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 
-function localParameterReferenceName(reference: string): string | null {
-  const prefix = "#/parameters/";
+function localReferenceName(
+  reference: string,
+  section: "parameters" | "responses",
+): string | null {
+  const prefix = `#/${section}/`;
   if (!reference.startsWith(prefix)) return null;
 
   const token = reference.slice(prefix.length);
   if (!token || token.includes("/")) return null;
   return decodePointerToken(token);
+}
+
+function localParameterReferenceName(reference: string): string | null {
+  return localReferenceName(reference, "parameters");
+}
+
+function localResponseReferenceName(reference: string): string | null {
+  return localReferenceName(reference, "responses");
 }
 
 export function resolveParameterReference(
@@ -56,6 +67,39 @@ export function dereferenceParameter(
   return current;
 }
 
+export function resolveResponseReference(
+  response: JsonRecord,
+  globalResponses: JsonRecord,
+): JsonRecord | null {
+  if (typeof response.$ref !== "string") return null;
+
+  const name = localResponseReferenceName(response.$ref);
+  if (!name) return null;
+
+  const resolved = globalResponses[name];
+  return isRecord(resolved) ? resolved : null;
+}
+
+export function dereferenceResponse(
+  response: JsonRecord,
+  globalResponses: JsonRecord,
+): JsonRecord {
+  let current = response;
+  const visited = new Set<JsonRecord>();
+
+  while (!visited.has(current)) {
+    visited.add(current);
+    const resolved = resolveResponseReference(
+      current,
+      globalResponses,
+    );
+    if (!resolved) return current;
+    current = resolved;
+  }
+
+  return current;
+}
+
 export function parameterKind(
   parameter: JsonRecord,
   globalParameters: JsonRecord,
@@ -80,6 +124,8 @@ export function rewriteOpenApiReference(
   reference: string,
   globalParameters: JsonRecord,
 ): string {
+  if (!reference.startsWith("#/")) return reference;
+
   const parameterName = localParameterReferenceName(reference);
   if (parameterName) {
     const referenced = globalParameters[parameterName];
@@ -97,13 +143,22 @@ export function rewriteOpenApiReference(
     );
   }
 
-  return reference
-    .replace("#/definitions/", "#/components/schemas/")
-    .replace("#/responses/", "#/components/responses/")
-    .replace(
+  const sectionMappings = [
+    ["#/definitions/", "#/components/schemas/"],
+    ["#/responses/", "#/components/responses/"],
+    [
       "#/securityDefinitions/",
       "#/components/securitySchemes/",
-    );
+    ],
+  ] as const;
+
+  for (const [source, target] of sectionMappings) {
+    if (reference.startsWith(source)) {
+      return `${target}${reference.slice(source.length)}`;
+    }
+  }
+
+  return reference;
 }
 
 export function convertParameterReference(

@@ -44,6 +44,16 @@ const globalParameters = {
   },
 };
 
+const globalResponses = {
+  NotFound: {
+    description: "Not found",
+    schema: { $ref: "#/definitions/Problem" },
+  },
+  NotFoundAlias: {
+    $ref: "#/responses/NotFound",
+  },
+};
+
 test("rewrites reusable ordinary parameters as component parameters", () => {
   const parameter = { $ref: "#/parameters/Limit" };
 
@@ -101,5 +111,43 @@ test("keeps external references intact", () => {
       globalParameters,
     ),
     "shared-parameters.json#/Limit",
+  );
+  assert.equal(
+    helpers.rewriteOpenApiReference(
+      "models.json#/definitions/Payload",
+      globalParameters,
+    ),
+    "models.json#/definitions/Payload",
+  );
+  assert.equal(
+    helpers.rewriteOpenApiReference(
+      "responses.json#/responses/NotFound",
+      globalParameters,
+    ),
+    "responses.json#/responses/NotFound",
+  );
+  assert.equal(
+    helpers.rewriteOpenApiReference(
+      "#/x-reference-map/~1definitions~1Payload",
+      globalParameters,
+    ),
+    "#/x-reference-map/~1definitions~1Payload",
+  );
+});
+
+test("rewrites and resolves reusable response references", () => {
+  assert.equal(
+    helpers.rewriteOpenApiReference(
+      "#/responses/NotFound",
+      globalParameters,
+    ),
+    "#/components/responses/NotFound",
+  );
+  assert.equal(
+    helpers.dereferenceResponse(
+      { $ref: "#/responses/NotFoundAlias" },
+      globalResponses,
+    ),
+    globalResponses.NotFound,
   );
 });

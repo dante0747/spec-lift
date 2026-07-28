@@ -11,6 +11,7 @@ import {
 import {
   convertParameterReference,
   dereferenceParameter,
+  dereferenceResponse,
   isRecord,
   parameterKind,
   rewriteOpenApiReference,
@@ -196,22 +197,7 @@ function collectionStyle(collectionFormat: unknown, location: unknown) {
 function convertParameter(
   parameter: JsonRecord,
   globalParameters: JsonRecord = {},
-  inlineReference = false,
 ): JsonRecord {
-  if (inlineReference) {
-    const resolved = dereferenceParameter(
-      parameter,
-      globalParameters,
-    );
-    if (resolved !== parameter) {
-      return convertParameter(
-        resolved,
-        globalParameters,
-        false,
-      );
-    }
-  }
-
   const reference = convertParameterReference(
     parameter,
     globalParameters,
@@ -332,8 +318,28 @@ function convertFormParameters(
 function convertResponse(
   response: unknown,
   mediaTypes: string[],
+  globalResponses: JsonRecord = {},
+  inlineReference = false,
 ): unknown {
   if (!isRecord(response)) return response;
+
+  if (inlineReference) {
+    const resolved = dereferenceResponse(response, globalResponses);
+    if (resolved !== response) {
+      return convertResponse(
+        resolved,
+        mediaTypes,
+        globalResponses,
+        false,
+      );
+    }
+  }
+
+  if (typeof response.$ref === "string") {
+    return {
+      $ref: rewriteOpenApiReference(response.$ref, {}),
+    };
+  }
 
   const output: JsonRecord = {};
   for (const [key, value] of Object.entries(response)) {
@@ -456,6 +462,9 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
   const globalParameters = isRecord(swagger.parameters)
     ? swagger.parameters
     : {};
+  const globalResponses = isRecord(swagger.responses)
+    ? swagger.responses
+    : {};
   const output: JsonRecord = {
     openapi: "3.0.3",
     info: rewriteRefs(swagger.info, globalParameters),
@@ -524,7 +533,6 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
             convertParameter(
               parameter,
               globalParameters,
-              true,
             ),
           );
         continue;
@@ -580,7 +588,6 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
           convertParameter(
             parameter,
             globalParameters,
-            true,
           ),
         );
       }
@@ -600,7 +607,7 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
           bodyParameter,
           operationConsumes,
           globalParameters,
-          true,
+          Array.isArray(rawOperation.consumes),
         );
         const resolvedBodyParameter = dereferenceParameter(
           bodyParameter,
@@ -611,17 +618,32 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
             resolvedBodyParameter.name;
         }
       } else if (formParameters.length > 0) {
-        operation.requestBody = convertFormParameters(
-          formParameters,
-          operationConsumes,
-          globalParameters,
-        );
+        const reusableFormBody =
+          formParameters.length === 1 &&
+          !Array.isArray(rawOperation.consumes)
+            ? convertParameterReference(
+                formParameters[0],
+                globalParameters,
+              )
+            : null;
+        operation.requestBody =
+          reusableFormBody ??
+          convertFormParameters(
+            formParameters,
+            operationConsumes,
+            globalParameters,
+          );
       }
 
       if (isRecord(rawOperation.responses)) {
         const responses: JsonRecord = {};
         for (const [status, response] of Object.entries(rawOperation.responses)) {
-          responses[status] = convertResponse(response, operationProduces);
+          responses[status] = convertResponse(
+            response,
+            operationProduces,
+            globalResponses,
+            Array.isArray(rawOperation.produces),
+          );
         }
         operation.responses = responses;
       }
@@ -690,7 +712,11 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
   if (isRecord(swagger.responses)) {
     const responses: JsonRecord = {};
     for (const [name, response] of Object.entries(swagger.responses)) {
-      responses[name] = convertResponse(response, globalProduces);
+      responses[name] = convertResponse(
+        response,
+        globalProduces,
+        globalResponses,
+      );
     }
     components.responses = responses;
   }

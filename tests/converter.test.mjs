@@ -68,7 +68,10 @@ const referenceFixture = {
     "/items": {
       get: {
         parameters: [{ $ref: "#/parameters/Limit" }],
-        responses: { "200": { description: "ok" } },
+        responses: {
+          "200": { description: "ok" },
+          "404": { $ref: "#/responses/NotFound" },
+        },
       },
       post: {
         parameters: [{ $ref: "#/parameters/Payload" }],
@@ -78,8 +81,11 @@ const referenceFixture = {
     "/upload": {
       post: {
         consumes: ["multipart/form-data"],
+        produces: ["application/problem+json"],
         parameters: [{ $ref: "#/parameters/Upload" }],
-        responses: { "200": { description: "ok" } },
+        responses: {
+          "400": { $ref: "#/responses/NotFound" },
+        },
       },
     },
   },
@@ -108,28 +114,36 @@ const referenceFixture = {
       type: "object",
       properties: { id: { type: "string" } },
     },
+    Problem: {
+      type: "object",
+      properties: { detail: { type: "string" } },
+    },
+  },
+  responses: {
+    NotFound: {
+      description: "Entity not found",
+      schema: { $ref: "#/definitions/Problem" },
+    },
   },
 };
 
-test("matches the reference converter for reusable parameters", () => {
+test("preserves reusable component references at operation level", () => {
   const converted = convertSwagger(referenceFixture);
   const queryParameter =
     converted.paths["/items"].get.parameters[0];
   const body = converted.paths["/items"].post.requestBody;
   const formBody = converted.paths["/upload"].post.requestBody;
+  const response = converted.paths["/items"].get.responses["404"];
+  const overriddenResponse =
+    converted.paths["/upload"].post.responses["400"];
 
   assert.deepEqual(queryParameter, {
-    name: "limit",
-    in: "query",
-    schema: { type: "integer", format: "int32" },
+    $ref: "#/components/parameters/Limit",
   });
-  assert.equal(queryParameter.$ref, undefined);
 
-  assert.equal(
-    body.content["application/json"].schema.$ref,
-    "#/components/schemas/Payload",
-  );
-  assert.equal(body.required, true);
+  assert.deepEqual(body, {
+    $ref: "#/components/requestBodies/Payload",
+  });
   assert.equal(
     converted.paths["/items"].post[
       "x-codegen-request-body-name"
@@ -143,6 +157,15 @@ test("matches the reference converter for reusable parameters", () => {
   );
   assert.equal(formBody.required, true);
 
+  assert.deepEqual(response, {
+    $ref: "#/components/responses/NotFound",
+  });
+  assert.equal(
+    overriddenResponse.content["application/problem+json"].schema.$ref,
+    "#/components/schemas/Problem",
+  );
+  assert.equal(overriddenResponse.$ref, undefined);
+
   assert.deepEqual(converted.components.parameters.Limit, {
     name: "limit",
     in: "query",
@@ -153,6 +176,12 @@ test("matches the reference converter for reusable parameters", () => {
       "application/json"
     ].schema.$ref,
     "#/components/schemas/Payload",
+  );
+  assert.equal(
+    converted.components.responses.NotFound.content[
+      "application/json"
+    ].schema.$ref,
+    "#/components/schemas/Problem",
   );
 });
 
@@ -180,4 +209,83 @@ test("never emits an incomplete parameter reference object", () => {
       }
     }
   }
+});
+
+function collectReferences(value, references = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectReferences(item, references);
+    return references;
+  }
+  if (typeof value !== "object" || value === null) return references;
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === "$ref" && typeof nested === "string") {
+      references.push(nested);
+    } else {
+      collectReferences(nested, references);
+    }
+  }
+  return references;
+}
+
+function resolveJsonPointer(document, reference) {
+  if (!reference.startsWith("#/")) return undefined;
+  return reference
+    .slice(2)
+    .split("/")
+    .map((token) => token.replace(/~1/g, "/").replace(/~0/g, "~"))
+    .reduce(
+      (current, token) =>
+        typeof current === "object" &&
+        current !== null &&
+        token in current
+          ? current[token]
+          : undefined,
+      document,
+    );
+}
+
+test("every emitted local reference resolves to an output component", () => {
+  const converted = convertSwagger(referenceFixture);
+  const references = collectReferences(converted);
+
+  assert.ok(references.length > 0);
+  for (const reference of references) {
+    assert.notEqual(
+      resolveJsonPointer(converted, reference),
+      undefined,
+      `Unresolved local reference: ${reference}`,
+    );
+  }
+});
+
+test("keeps external schema and response references unchanged", () => {
+  const converted = convertSwagger({
+    swagger: "2.0",
+    info: { title: "External references", version: "1.0.0" },
+    paths: {
+      "/external": {
+        get: {
+          responses: {
+            "200": { $ref: "responses.json#/responses/Success" },
+            "201": {
+              description: "Created",
+              schema: { $ref: "models.json#/definitions/Created" },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(
+    converted.paths["/external"].get.responses["200"].$ref,
+    "responses.json#/responses/Success",
+  );
+  assert.equal(
+    converted.paths["/external"].get.responses["201"].content[
+      "application/json"
+    ].schema.$ref,
+    "models.json#/definitions/Created",
+  );
 });
