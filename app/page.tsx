@@ -10,9 +10,9 @@ import {
 } from "react";
 import {
   convertParameterReference,
+  dereferenceParameter,
   isRecord,
   parameterKind,
-  resolveParameterReference,
   rewriteOpenApiReference,
   type JsonRecord,
 } from "./converter-refs";
@@ -196,7 +196,22 @@ function collectionStyle(collectionFormat: unknown, location: unknown) {
 function convertParameter(
   parameter: JsonRecord,
   globalParameters: JsonRecord = {},
+  inlineReference = false,
 ): JsonRecord {
+  if (inlineReference) {
+    const resolved = dereferenceParameter(
+      parameter,
+      globalParameters,
+    );
+    if (resolved !== parameter) {
+      return convertParameter(
+        resolved,
+        globalParameters,
+        false,
+      );
+    }
+  }
+
   const reference = convertParameterReference(
     parameter,
     globalParameters,
@@ -231,7 +246,23 @@ function convertBodyParameter(
   parameter: JsonRecord,
   mediaTypes: string[],
   globalParameters: JsonRecord,
+  inlineReference = false,
 ): JsonRecord {
+  if (inlineReference) {
+    const resolved = dereferenceParameter(
+      parameter,
+      globalParameters,
+    );
+    if (resolved !== parameter) {
+      return convertBodyParameter(
+        resolved,
+        mediaTypes,
+        globalParameters,
+        false,
+      );
+    }
+  }
+
   const reference = convertParameterReference(
     parameter,
     globalParameters,
@@ -267,9 +298,10 @@ function convertFormParameters(
   const required: string[] = [];
 
   for (const parameter of parameters) {
-    const resolved =
-      resolveParameterReference(parameter, globalParameters) ??
-      parameter;
+    const resolved = dereferenceParameter(
+      parameter,
+      globalParameters,
+    );
     if (typeof resolved.name !== "string") continue;
 
     properties[resolved.name] = {
@@ -291,7 +323,10 @@ function convertFormParameters(
     content[mediaType] = { schema: formSchema };
   }
 
-  return { content };
+  return {
+    content,
+    ...(required.length > 0 ? { required: true } : {}),
+  };
 }
 
 function convertResponse(
@@ -486,7 +521,11 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
             ),
           )
           .map((parameter) =>
-            convertParameter(parameter, globalParameters),
+            convertParameter(
+              parameter,
+              globalParameters,
+              true,
+            ),
           );
         continue;
       }
@@ -538,7 +577,11 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
       );
       if (regularParameters.length > 0) {
         operation.parameters = regularParameters.map((parameter) =>
-          convertParameter(parameter, globalParameters),
+          convertParameter(
+            parameter,
+            globalParameters,
+            true,
+          ),
         );
       }
 
@@ -557,7 +600,16 @@ function convertSwagger(swagger: JsonRecord): JsonRecord {
           bodyParameter,
           operationConsumes,
           globalParameters,
+          true,
         );
+        const resolvedBodyParameter = dereferenceParameter(
+          bodyParameter,
+          globalParameters,
+        );
+        if (typeof resolvedBodyParameter.name === "string") {
+          operation["x-codegen-request-body-name"] =
+            resolvedBodyParameter.name;
+        }
       } else if (formParameters.length > 0) {
         operation.requestBody = convertFormParameters(
           formParameters,

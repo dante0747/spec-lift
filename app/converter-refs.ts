@@ -36,6 +36,26 @@ export function resolveParameterReference(
   return isRecord(resolved) ? resolved : null;
 }
 
+export function dereferenceParameter(
+  parameter: JsonRecord,
+  globalParameters: JsonRecord,
+): JsonRecord {
+  let current = parameter;
+  const visited = new Set<JsonRecord>();
+
+  while (!visited.has(current)) {
+    visited.add(current);
+    const resolved = resolveParameterReference(
+      current,
+      globalParameters,
+    );
+    if (!resolved) return current;
+    current = resolved;
+  }
+
+  return current;
+}
+
 export function parameterKind(
   parameter: JsonRecord,
   globalParameters: JsonRecord,

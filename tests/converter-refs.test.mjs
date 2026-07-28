@@ -85,6 +85,13 @@ test("resolves aliases and form-data parameter references", () => {
     ),
     "#/components/requestBodies/Upload",
   );
+  assert.equal(
+    helpers.dereferenceParameter(
+      { $ref: "#/parameters/PayloadAlias" },
+      globalParameters,
+    ),
+    globalParameters.Payload,
+  );
 });
 
 test("keeps external references intact", () => {
