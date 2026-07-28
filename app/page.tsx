@@ -716,13 +716,92 @@ function initialOutput() {
   return JSON.stringify(convertSwagger(SAMPLE_SWAGGER), null, 2);
 }
 
+type InputAssessment = {
+  status: "empty" | "invalid" | "valid";
+  label: string;
+  message: string;
+};
+
+function assessInput(source: string): InputAssessment {
+  if (!source.trim()) {
+    return {
+      status: "empty",
+      label: "Waiting for input",
+      message: "Paste JSON or choose a Swagger 2.0 file.",
+    };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(source);
+    if (!isRecord(parsed)) {
+      return {
+        status: "invalid",
+        label: "JSON object required",
+        message: "The top level of the document must be an object.",
+      };
+    }
+    if (parsed.swagger !== "2.0") {
+      return {
+        status: "invalid",
+        label: "Swagger 2.0 required",
+        message: 'Expected a document with "swagger": "2.0".',
+      };
+    }
+    if (!isRecord(parsed.info)) {
+      return {
+        status: "invalid",
+        label: "Missing info object",
+        message: 'Add the required top-level "info" object.',
+      };
+    }
+    if (!isRecord(parsed.paths)) {
+      return {
+        status: "invalid",
+        label: "Missing paths object",
+        message: 'Add the required top-level "paths" object.',
+      };
+    }
+
+    return {
+      status: "valid",
+      label: "Valid Swagger 2.0",
+      message: "Ready to convert locally.",
+    };
+  } catch (parseError) {
+    return {
+      status: "invalid",
+      label: "Invalid JSON",
+      message:
+        parseError instanceof SyntaxError
+          ? parseError.message
+          : "Check the JSON syntax and try again.",
+    };
+  }
+}
+
+function textMetrics(value: string) {
+  return {
+    characters: value.length,
+    lines: value ? value.split("\n").length : 0,
+  };
+}
+
 export default function Home() {
   const [input, setInput] = useState(SAMPLE_TEXT);
   const [output, setOutput] = useState(initialOutput);
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lastConvertedInput, setLastConvertedInput] = useState(SAMPLE_TEXT);
+  const [notice, setNotice] = useState(
+    "Sample converted. Replace it with your Swagger document.",
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const inputAssessment = useMemo(() => assessInput(input), [input]);
+  const inputMetrics = useMemo(() => textMetrics(input), [input]);
+  const outputMetrics = useMemo(() => textMetrics(output), [output]);
+  const outputIsStale = input !== lastConvertedInput;
 
   const stats = useMemo(() => {
     try {
@@ -750,7 +829,9 @@ export default function Home() {
       }
       const converted = convertSwagger(parsed);
       setOutput(JSON.stringify(converted, null, 2));
+      setLastConvertedInput(source);
       setError("");
+      setNotice("Conversion complete. Review the result before production use.");
     } catch (conversionError) {
       setError(
         conversionError instanceof Error
@@ -764,6 +845,10 @@ export default function Home() {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".json")) {
       setError("Please choose a JSON file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("That file is over 10 MB. Choose a smaller Swagger document.");
       return;
     }
     const reader = new FileReader();
@@ -805,12 +890,20 @@ export default function Home() {
   }
 
   async function copyOutput() {
-    await navigator.clipboard.writeText(output);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    if (!output) return;
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopied(true);
+      setError("");
+      setNotice("OpenAPI JSON copied to your clipboard.");
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("Copy failed. Select the output and copy it manually.");
+    }
   }
 
   function downloadOutput() {
+    if (!output) return;
     const blob = new Blob([output], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -821,60 +914,76 @@ export default function Home() {
   }
 
   return (
-    <main>
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
-
-      <nav className="nav shell" aria-label="Main navigation">
-        <a className="brand" href="#" aria-label="SpecLift home">
-          <span className="brand-mark" aria-hidden="true">
-            <span />
-            <span />
-          </span>
-          <span>SpecLift</span>
-        </a>
-        <div className="nav-links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#privacy">Privacy</a>
-          <span className="local-pill">
-            <span className="pulse-dot" />
-            Runs locally
-          </span>
+    <main className="site-frame">
+      <header className="site-header">
+        <div className="shell header-inner">
+          <a className="brand" href="#top" aria-label="SpecLift home">
+            <span className="brand-glyph" aria-hidden="true">&gt;_</span>
+            <span>SpecLift</span>
+          </a>
+          <nav className="nav-links" aria-label="Main navigation">
+            <a href="#converter">Converter</a>
+            <a href="#workflow">How it works</a>
+            <span className="local-pill">
+              <span className="pulse-dot" aria-hidden="true" />
+              Local only
+            </span>
+          </nav>
         </div>
-      </nav>
+      </header>
 
-      <section className="hero shell" aria-labelledby="hero-title">
-        <div className="eyebrow">
-          <span className="eyebrow-icon">↗</span>
-          Swagger 2.0 → OpenAPI 3.0.3
+      <section className="hero shell" id="top" aria-labelledby="hero-title">
+        <div className="hero-copy-block">
+          <div className="eyebrow">
+            <span aria-hidden="true">●</span>
+            Swagger 2.0 → OpenAPI 3.0.3
+          </div>
+          <h1 id="hero-title">
+            Modernize your API spec.
+            <span> Keep it local.</span>
+          </h1>
+          <p className="hero-copy">
+            A focused, browser-only workspace for converting Swagger JSON.
+            No uploads, accounts, telemetry, or hidden network calls.
+          </p>
         </div>
-        <h1 id="hero-title">
-          Modernize your API spec.
-          <span> Keep every byte private.</span>
-        </h1>
-        <p className="hero-copy">
-          Convert Swagger 2 JSON into a clean OpenAPI 3 specification,
-          instantly. No uploads, no accounts, no external services.
-        </p>
-        <div className="hero-proof" aria-label="Privacy guarantees">
-          <span><b>01</b> Browser-only processing</span>
-          <span><b>02</b> Zero data retention</span>
-          <span><b>03</b> Ready to download</span>
+        <div className="hero-terminal" aria-label="Privacy summary">
+          <div className="terminal-command">
+            <span>$</span> speclift --privacy
+          </div>
+          <dl>
+            <div>
+              <dt>processing</dt>
+              <dd>in browser</dd>
+            </div>
+            <div>
+              <dt>retention</dt>
+              <dd>none</dd>
+            </div>
+            <div>
+              <dt>network</dt>
+              <dd>offline-ready</dd>
+            </div>
+          </dl>
         </div>
       </section>
 
-      <section className="workspace-shell shell" aria-label="API specification converter">
+      <section
+        className="workspace-shell shell"
+        id="converter"
+        aria-label="API specification converter"
+      >
         <div className="workspace-topbar">
           <div className="window-dots" aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
+          <span className="workspace-title">speclift / converter</span>
           <div className="privacy-status">
-            <span className="lock-icon" aria-hidden="true">⌾</span>
-            <span><strong>Private session</strong> · Nothing leaves this browser</span>
+            <span className="lock-icon" aria-hidden="true">◇</span>
+            <span>Nothing leaves this browser</span>
           </div>
-          <span className="version-chip">v2 → v3</span>
         </div>
 
         <div className="workspace">
@@ -893,21 +1002,32 @@ export default function Home() {
             onDrop={handleDrop}
           >
             <div className="panel-heading">
-              <div>
+              <div className="panel-title">
                 <span className="panel-kicker">INPUT</span>
-                <h2>Swagger 2 JSON</h2>
+                <h2>swagger.json</h2>
               </div>
               <div className="panel-actions">
-                <button type="button" className="text-button" onClick={formatInput}>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Open file
+                </button>
+                <button type="button" className="ghost-button" onClick={formatInput}>
                   Format
                 </button>
                 <button
                   type="button"
-                  className="text-button"
+                  className="ghost-button danger-button"
                   onClick={() => {
                     setInput("");
+                    setOutput("");
+                    setLastConvertedInput("");
                     setError("");
+                    setNotice("Input and output cleared.");
                   }}
+                  disabled={!input && !output}
                 >
                   Clear
                 </button>
@@ -920,9 +1040,22 @@ export default function Home() {
             <textarea
               id="swagger-input"
               spellCheck={false}
+              wrap="off"
               value={input}
-              onChange={(event) => setInput(event.target.value)}
-              aria-describedby={error ? "conversion-error" : undefined}
+              placeholder={'{\n  "swagger": "2.0",\n  "info": { ... },\n  "paths": { ... }\n}'}
+              onChange={(event) => {
+                setInput(event.target.value);
+                setError("");
+                setCopied(false);
+              }}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault();
+                  runConversion();
+                }
+              }}
+              aria-describedby="input-status conversion-message"
+              aria-invalid={inputAssessment.status === "invalid"}
             />
 
             <div
@@ -931,7 +1064,7 @@ export default function Home() {
               tabIndex={0}
               onClick={() => fileInputRef.current?.click()}
               onKeyDown={handleDropzoneKeyDown}
-              aria-label="Upload a Swagger JSON file"
+              aria-label="Choose a Swagger JSON file, or drop one anywhere in the input panel"
             >
               <input
                 ref={fileInputRef}
@@ -940,28 +1073,30 @@ export default function Home() {
                 onChange={handleFileChange}
                 hidden
               />
-              <span className="upload-icon" aria-hidden="true">↑</span>
+              <span className="upload-icon" aria-hidden="true">+</span>
               <span>
-                <strong>Drop a JSON file here</strong>
-                <small>or click to browse · processed on your device</small>
+                <strong>Drop .json anywhere in this pane</strong>
+                <small>or choose a file · 10 MB maximum</small>
               </span>
             </div>
 
-            <div className="input-footer">
-              <span className={error ? "input-state error-state" : "input-state"}>
-                <span aria-hidden="true">{error ? "!" : "✓"}</span>
-                {error ? "Needs attention" : "Valid Swagger 2.0"}
-              </span>
-              <button
-                type="button"
-                className="sample-button"
-                onClick={() => {
-                  setInput(SAMPLE_TEXT);
-                  runConversion(SAMPLE_TEXT);
-                }}
+            <div className="panel-footer">
+              <span
+                className={`input-state state-${inputAssessment.status}`}
+                id="input-status"
               >
-                Load sample
-              </button>
+                <span aria-hidden="true">
+                  {inputAssessment.status === "valid"
+                    ? "●"
+                    : inputAssessment.status === "invalid"
+                      ? "×"
+                      : "○"}
+                </span>
+                {inputAssessment.label}
+              </span>
+              <span className="editor-metrics">
+                Ln {inputMetrics.lines} · {inputMetrics.characters.toLocaleString()} chars
+              </span>
             </div>
           </div>
 
@@ -971,139 +1106,148 @@ export default function Home() {
 
           <div className="editor-panel output-panel">
             <div className="panel-heading">
-              <div>
+              <div className="panel-title">
                 <span className="panel-kicker">OUTPUT</span>
-                <h2>OpenAPI 3.0.3</h2>
+                <h2>openapi.json</h2>
               </div>
               <div className="panel-actions">
+                <span
+                  className={`sync-chip ${outputIsStale ? "is-stale" : ""}`}
+                >
+                  {outputIsStale ? "Not converted" : "Up to date"}
+                </span>
                 <button
                   type="button"
-                  className="icon-button"
+                  className="ghost-button"
                   onClick={copyOutput}
+                  disabled={!output}
                   aria-label="Copy converted OpenAPI JSON"
                 >
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? "Copied" : "Copy"}
                 </button>
                 <button
                   type="button"
                   className="download-button"
                   onClick={downloadOutput}
+                  disabled={!output}
                 >
                   <span aria-hidden="true">↓</span> Download
                 </button>
               </div>
             </div>
 
-            <pre className="output-code" tabIndex={0} aria-label="Converted OpenAPI JSON">
-              <code>{output}</code>
+            <pre
+              className="output-code"
+              tabIndex={0}
+              aria-label="Converted OpenAPI JSON"
+              aria-live="polite"
+            >
+              <code>
+                {output ||
+                  "// Converted OpenAPI 3.0.3 JSON will appear here."}
+              </code>
             </pre>
 
-            <div className="output-footer">
-              <span><b>{stats.endpoints}</b> paths</span>
-              <span><b>{stats.operations}</b> operations</span>
-              <span><b>{stats.schemas}</b> schemas</span>
+            <div className="panel-footer output-footer">
+              <div className="output-stats" aria-label="Output summary">
+                <span><b>{stats.endpoints}</b> paths</span>
+                <span><b>{stats.operations}</b> operations</span>
+                <span><b>{stats.schemas}</b> schemas</span>
+              </div>
+              <span className="editor-metrics">Ln {outputMetrics.lines}</span>
             </div>
           </div>
         </div>
 
         <div className="conversion-bar">
-          <div className="error-message" id="conversion-error" aria-live="polite">
-            {error || "Ready when you are. Your source never leaves this tab."}
+          <div
+            className={`conversion-message ${error ? "has-error" : ""}`}
+            id="conversion-message"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="message-symbol" aria-hidden="true">
+              {error ? "!" : "i"}
+            </span>
+            <span>
+              <strong>{error ? "Could not convert" : "Local session"}</strong>
+              {error || (inputAssessment.status === "invalid"
+                ? inputAssessment.message
+                : notice)}
+            </span>
           </div>
-          <button type="button" className="convert-button" onClick={() => runConversion()}>
-            <span>Convert to OpenAPI 3</span>
-            <span className="button-arrow" aria-hidden="true">→</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="trust-strip">
-        <div className="shell trust-strip-inner">
-          <p>Built for APIs that should stay yours.</p>
-          <div>
-            <span>NO NETWORK REQUESTS</span>
-            <span>NO FILE UPLOADS</span>
-            <span>NO TELEMETRY</span>
+          <div className="conversion-actions">
+            <span className="shortcut-hint">
+              <kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd>
+            </span>
+            <button
+              type="button"
+              className="convert-button"
+              onClick={() => runConversion()}
+              disabled={inputAssessment.status !== "valid"}
+            >
+              <span>Convert to OpenAPI 3</span>
+              <span className="button-arrow" aria-hidden="true">→</span>
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="privacy-section shell" id="privacy">
-        <div className="section-heading">
-          <span className="section-number">01 / PRIVACY</span>
-          <h2>Security is not a setting.<br />It is the architecture.</h2>
-        </div>
-        <div className="privacy-grid">
-          <article className="privacy-spotlight">
-            <div className="orbital" aria-hidden="true">
-              <span className="orbital-core">LOCAL</span>
-              <span className="orbit-dot dot-one" />
-              <span className="orbit-dot dot-two" />
-            </div>
-            <div>
-              <span className="card-label">IN-BROWSER ENGINE</span>
-              <h3>Your API definition stays inside your browser.</h3>
-              <p>
-                SpecLift performs every transformation with frontend code on
-                your device. It has no backend, no analytics, and no external
-                service dependency.
-              </p>
-            </div>
-          </article>
-          <article className="principle-card">
-            <span className="principle-icon">00</span>
-            <h3>Zero retention</h3>
-            <p>Refresh the page and the session is gone. We never store your spec.</p>
-          </article>
-          <article className="principle-card dark-card">
-            <span className="principle-icon">↯</span>
-            <h3>Works offline</h3>
-            <p>Once loaded, conversion needs no connection to any service.</p>
-          </article>
-        </div>
+      <section className="support-strip shell" aria-label="Converter guarantees">
+        <span><b>01</b> Browser-only processing</span>
+        <span><b>02</b> Zero data retention</span>
+        <span><b>03</b> No telemetry</span>
+        <button
+          type="button"
+          className="sample-button"
+          onClick={() => {
+            setInput(SAMPLE_TEXT);
+            runConversion(SAMPLE_TEXT);
+          }}
+        >
+          Reset to sample <span aria-hidden="true">↗</span>
+        </button>
       </section>
 
-      <section className="how-section shell" id="how-it-works">
-        <div className="section-heading compact-heading">
-          <span className="section-number">02 / WORKFLOW</span>
-          <h2>From legacy to ready<br />in three quiet steps.</h2>
+      <section className="workflow-section shell" id="workflow">
+        <div className="section-intro">
+          <span className="section-label">HOW IT WORKS</span>
+          <h2>Legacy in. Production-ready foundation out.</h2>
+          <p>
+            SpecLift remaps the common Swagger 2.0 surface while keeping the
+            workflow small enough to understand at a glance.
+          </p>
         </div>
-        <ol className="steps">
+        <ol className="workflow-grid">
           <li>
             <span className="step-number">01</span>
             <div>
               <h3>Paste or drop</h3>
-              <p>Add your Swagger 2.0 JSON directly in the secure workspace.</p>
+              <p>Add Swagger 2.0 JSON directly to the scrollable input editor.</p>
             </div>
           </li>
           <li>
             <span className="step-number">02</span>
             <div>
               <h3>Convert locally</h3>
-              <p>References, request bodies, servers, and components are remapped.</p>
+              <p>Servers, bodies, responses, references, and components are remapped.</p>
             </div>
           </li>
           <li>
             <span className="step-number">03</span>
             <div>
-              <h3>Copy or download</h3>
-              <p>Take the OpenAPI 3.0.3 JSON into your next tool or repository.</p>
+              <h3>Review and export</h3>
+              <p>Inspect the result, then copy or download the OpenAPI JSON.</p>
             </div>
           </li>
         </ol>
       </section>
 
-      <footer>
+      <footer className="site-footer">
         <div className="shell footer-inner">
-          <a className="brand footer-brand" href="#" aria-label="SpecLift home">
-            <span className="brand-mark" aria-hidden="true">
-              <span />
-              <span />
-            </span>
-            <span>SpecLift</span>
-          </a>
+          <span className="footer-brand"><span aria-hidden="true">&gt;_</span> SpecLift</span>
           <p>Private, practical API modernization.</p>
-          <a href="#hero-title">Back to top ↑</a>
+          <a href="#top">Back to top ↑</a>
         </div>
       </footer>
     </main>
