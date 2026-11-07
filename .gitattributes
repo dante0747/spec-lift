@@ -1,0 +1,5 @@
+# Keep LF line endings everywhere, including Windows checkouts.
+* text=auto eol=lf
+
+*.png binary
+*.woff2 binary

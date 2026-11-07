@@ -1,0 +1,34 @@
+name: Output differs from Swagger
+description: In Swagger-exact mode, SpecLift's output is not identical to converter.swagger.io.
+labels: [parity]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        With **Fix Swagger bugs** switched off, SpecLift should produce exactly
+        what [converter.swagger.io](https://converter.swagger.io) returns, key
+        order included. If it doesn't, that's a bug we want to fix.
+        **Please use a small, made-up example, not an internal spec.**
+  - type: textarea
+    id: input
+    attributes:
+      label: Swagger 2.0 input
+      description: The smallest document that shows the difference.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: speclift
+    attributes:
+      label: SpecLift output (Swagger-exact mode)
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: swagger
+    attributes:
+      label: converter.swagger.io output
+      description: "For example: curl -X POST https://converter.swagger.io/api/convert -H 'Content-Type: application/yaml' --data-binary @swagger.yaml"
+      render: json
+    validations:
+      required: true

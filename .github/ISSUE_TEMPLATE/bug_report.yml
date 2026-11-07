@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in SpecLift is broken or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+        **Please do not paste internal or confidential API specs.** Reduce the
+        problem to a small, made-up Swagger 2.0 example instead.
+        If the converted output differs from Swagger's converter, use the
+        "Output differs from Swagger" template.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Minimal Swagger 2.0 input
+      description: The smallest JSON or YAML document that shows the problem.
+      render: yaml
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Fix Swagger bugs
+      options:
+        - "On (default)"
+        - "Off (Swagger-exact)"
+        - Not related to conversion
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Chrome 131 on macOS 15
+    validations:
+      required: true

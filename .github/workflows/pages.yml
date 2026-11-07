@@ -1,9 +1,7 @@
-name: Build and deploy SpecLift
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -36,12 +34,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test converter shell
+      - name: Test
         run: npm test
 
       - name: Configure GitHub Pages
         id: pages
-        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Build static site
@@ -51,13 +48,11 @@ jobs:
         run: npm run build:pages
 
       - name: Upload Pages artifact
-        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./out
 
   deploy:
-    if: github.event_name != 'pull_request'
     needs: build
     permissions:
       pages: write
