@@ -1,0 +1,577 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Schema variants",
+    "version": "1"
+  },
+  "paths": {},
+  "definitions": {
+    "Target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        }
+      }
+    },
+    "M_string": {
+      "type": "string",
+      "default": "a",
+      "enum": [
+        "a",
+        "b"
+      ],
+      "format": "custom",
+      "minLength": 1,
+      "maxLength": 3,
+      "pattern": "^a",
+      "example": "a",
+      "description": "d",
+      "title": "t",
+      "readOnly": true,
+      "x-ext": 1
+    },
+    "M_int": {
+      "type": "integer",
+      "format": "int64",
+      "default": 3,
+      "enum": [
+        1,
+        3
+      ],
+      "minimum": 1,
+      "maximum": 5,
+      "exclusiveMinimum": true,
+      "multipleOf": 1
+    },
+    "M_num": {
+      "type": "number",
+      "default": 1.5,
+      "format": "double"
+    },
+    "M_bool": {
+      "type": "boolean",
+      "default": false
+    },
+    "M_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "default": "2020-01-02T03:04:05Z",
+      "example": "2020-01-02T03:04:05Z"
+    },
+    "M_date": {
+      "type": "string",
+      "format": "date",
+      "example": "2020-01-02"
+    },
+    "M_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Target"
+      },
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "description": "arr",
+      "title": "T",
+      "example": [
+        {
+          "id": 1
+        }
+      ],
+      "default": [],
+      "enum": [
+        []
+      ],
+      "xml": {
+        "name": "list",
+        "wrapped": true
+      },
+      "x-ext": 5,
+      "readOnly": true
+    },
+    "M_array_items_only": {
+      "items": {
+        "type": "string"
+      }
+    },
+    "M_array_props": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "properties": {
+        "p": {
+          "type": "string"
+        }
+      }
+    },
+    "M_obj_misc": {
+      "type": "object",
+      "readOnly": true,
+      "minProperties": 1,
+      "maxProperties": 4,
+      "writeOnly": true,
+      "x-nullable": false,
+      "nullable": true,
+      "deprecated": true,
+      "additionalProperties": false
+    },
+    "M_composed": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Target"
+        },
+        {
+          "type": "object",
+          "required": [
+            "b"
+          ],
+          "properties": {
+            "b": {
+              "type": "string",
+              "default": "x"
+            }
+          }
+        },
+        {
+          "$ref": "#/definitions/M_string"
+        }
+      ],
+      "description": "c",
+      "title": "ct",
+      "x-ext": 6,
+      "example": {
+        "b": "y"
+      },
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "extra": {
+          "type": "integer"
+        }
+      },
+      "externalDocs": {
+        "url": "https://e"
+      },
+      "discriminator": "b",
+      "x-nullable": true
+    },
+    "M_composed_two_inline": {
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "b": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "M_ref_siblings": {
+      "$ref": "#/definitions/Target",
+      "description": "ignored"
+    },
+    "M_bool_schema": true,
+    "M_enum_no_type": {
+      "enum": [
+        "a",
+        "b"
+      ]
+    },
+    "M_format_no_type": {
+      "format": "date-time"
+    },
+    "M_file": {
+      "type": "file"
+    },
+    "M_nested": {
+      "type": "object",
+      "properties": {
+        "inner": {
+          "type": "object",
+          "properties": {
+            "deep": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "PropHolder": {
+      "type": "object",
+      "properties": {
+        "s_default": {
+          "type": "string",
+          "default": "abc"
+        },
+        "s_default_num": {
+          "type": "string",
+          "default": 5
+        },
+        "s_enum": {
+          "type": "string",
+          "enum": [
+            "a",
+            "b"
+          ]
+        },
+        "s_enum_mixed": {
+          "type": "string",
+          "enum": [
+            "a",
+            1,
+            true,
+            null
+          ]
+        },
+        "s_example": {
+          "type": "string",
+          "example": "ex"
+        },
+        "s_example_obj": {
+          "type": "string",
+          "example": {
+            "a": 1
+          }
+        },
+        "s_fmt_date": {
+          "type": "string",
+          "format": "date",
+          "default": "2020-01-02",
+          "example": "2020-01-02",
+          "enum": [
+            "2020-01-02"
+          ]
+        },
+        "s_fmt_datetime": {
+          "type": "string",
+          "format": "date-time",
+          "default": "2020-01-02T03:04:05Z",
+          "example": "2020-01-02T03:04:05Z"
+        },
+        "s_fmt_byte": {
+          "type": "string",
+          "format": "byte",
+          "default": "YWJj"
+        },
+        "s_fmt_binary": {
+          "type": "string",
+          "format": "binary"
+        },
+        "s_fmt_password": {
+          "type": "string",
+          "format": "password",
+          "default": "pw"
+        },
+        "s_fmt_email": {
+          "type": "string",
+          "format": "email",
+          "default": "a@b.c"
+        },
+        "s_fmt_uuid": {
+          "type": "string",
+          "format": "uuid",
+          "default": "0f8fad5b-d9cb-469f-a165-70867728950e",
+          "enum": [
+            "0f8fad5b-d9cb-469f-a165-70867728950e"
+          ]
+        },
+        "s_fmt_uri": {
+          "type": "string",
+          "format": "uri",
+          "default": "http://x"
+        },
+        "s_fmt_custom": {
+          "type": "string",
+          "format": "custom",
+          "default": "c"
+        },
+        "s_lengths": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5,
+          "pattern": "^a"
+        },
+        "s_misc": {
+          "type": "string",
+          "description": "d",
+          "title": "t",
+          "readOnly": true,
+          "xml": {
+            "name": "n"
+          },
+          "x-ext": 1,
+          "x-nullable": true,
+          "x-example": "xe"
+        },
+        "s_writeonly": {
+          "type": "string",
+          "writeOnly": true,
+          "allowEmptyValue": true,
+          "discriminator": "x",
+          "required": true
+        },
+        "i_default": {
+          "type": "integer",
+          "default": 5
+        },
+        "i_default_str": {
+          "type": "integer",
+          "default": "5"
+        },
+        "i_enum": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "i_enum_str": {
+          "type": "integer",
+          "enum": [
+            "1",
+            "2"
+          ]
+        },
+        "i_example": {
+          "type": "integer",
+          "example": 3
+        },
+        "i_int32": {
+          "type": "integer",
+          "format": "int32",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "exclusiveMinimum": true,
+          "exclusiveMaximum": false,
+          "multipleOf": 2
+        },
+        "i_int64": {
+          "type": "integer",
+          "format": "int64",
+          "default": 1,
+          "enum": [
+            1
+          ]
+        },
+        "i_custom": {
+          "type": "integer",
+          "format": "custom",
+          "default": 1
+        },
+        "n_default": {
+          "type": "number",
+          "default": 1.5
+        },
+        "n_default_int": {
+          "type": "number",
+          "default": 2
+        },
+        "n_enum": {
+          "type": "number",
+          "enum": [
+            1.5,
+            2
+          ]
+        },
+        "n_float": {
+          "type": "number",
+          "format": "float",
+          "default": 1.5,
+          "minimum": 0.5
+        },
+        "n_double": {
+          "type": "number",
+          "format": "double",
+          "default": 1.5,
+          "example": 2.5
+        },
+        "n_custom": {
+          "type": "number",
+          "format": "decimal",
+          "default": 1.5
+        },
+        "b_default": {
+          "type": "boolean",
+          "default": true
+        },
+        "b_enum": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "b_example": {
+          "type": "boolean",
+          "example": false
+        },
+        "a_basic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "a_misc": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "description": "d",
+          "readOnly": true,
+          "example": [
+            1
+          ],
+          "default": [
+            1
+          ],
+          "xml": {
+            "wrapped": true
+          },
+          "x-ext": 2,
+          "title": "t"
+        },
+        "a_unique_false": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": false
+        },
+        "a_noitems": {
+          "type": "array"
+        },
+        "a_ref": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Target"
+          }
+        },
+        "o_props": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "a"
+          ],
+          "description": "d",
+          "title": "t",
+          "example": {
+            "a": "x"
+          },
+          "readOnly": true,
+          "minProperties": 1,
+          "maxProperties": 2,
+          "x-ext": 3
+        },
+        "o_empty": {
+          "type": "object"
+        },
+        "o_ap": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "map",
+          "minProperties": 1
+        },
+        "o_ap_true": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "o_ap_false": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "o_ap_obj_props": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "r_plain": {
+          "$ref": "#/definitions/Target"
+        },
+        "r_siblings": {
+          "$ref": "#/definitions/Target",
+          "description": "sib",
+          "readOnly": true,
+          "x-ext": 4
+        },
+        "f_file": {
+          "type": "file",
+          "description": "f"
+        },
+        "no_type_enum": {
+          "enum": [
+            "x",
+            "y"
+          ]
+        },
+        "no_type_enum_num": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "no_type": {
+          "description": "untyped"
+        },
+        "no_type_props": {
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        },
+        "allof_prop": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Target"
+            }
+          ],
+          "description": "composed"
+        },
+        "fmt_only": {
+          "format": "date-time"
+        },
+        "unknown_type": {
+          "type": "weird",
+          "format": "x",
+          "default": "d"
+        }
+      }
+    }
+  }
+}

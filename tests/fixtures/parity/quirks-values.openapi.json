@@ -1,0 +1,391 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Values",
+    "description": "12",
+    "contact": {},
+    "license": {
+      "name": "MIT"
+    },
+    "version": "2"
+  },
+  "servers": [
+    {
+      "url": "https://API.example.com/"
+    },
+    {
+      "url": "http://API.example.com/"
+    }
+  ],
+  "paths": {
+    "/v": {
+      "get": {
+        "tags": [],
+        "operationId": "",
+        "parameters": [
+          {
+            "name": "big",
+            "in": "query",
+            "schema": {
+              "maximum": 12345678901,
+              "type": "integer",
+              "format": "int64",
+              "default": 9007199254740991
+            }
+          },
+          {
+            "name": "small",
+            "in": "query",
+            "schema": {
+              "minimum": 0.5,
+              "type": "number",
+              "default": 0.0001
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "enum": [
+                "2020-03-01T00:00:00.000+00:00",
+                null
+              ]
+            }
+          },
+          {
+            "name": "dt",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "enum": [
+                "2020-01-02T03:04:05.12+02:00",
+                null
+              ]
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "default": "0f8fad5b-d9cb-469f-a165-70867728950e"
+            }
+          },
+          {
+            "name": "pw",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "password",
+              "default": "secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Values"
+                }
+              },
+              "application/json": {
+                "example": {
+                  "a": [
+                    1,
+                    2
+                  ]
+                }
+              },
+              "text/plain": {
+                "example": "hi"
+              },
+              "application/xml": {
+                "example": null
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "security": [
+          {}
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "plain"
+            },
+            "application/json": {
+              "example": [
+                1,
+                {
+                  "b": 2
+                }
+              ]
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "body"
+      }
+    },
+    "/ref": {
+      "get": {
+        "tags": [],
+        "operationId": "",
+        "parameters": [
+          {
+            "name": "big",
+            "in": "query",
+            "schema": {
+              "maximum": 12345678901,
+              "type": "integer",
+              "format": "int64",
+              "default": 9007199254740991
+            }
+          },
+          {
+            "name": "small",
+            "in": "query",
+            "schema": {
+              "minimum": 0.5,
+              "type": "number",
+              "default": 0.0001
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "enum": [
+                "2020-03-01T00:00:00.000+00:00",
+                null
+              ]
+            }
+          },
+          {
+            "name": "dt",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "enum": [
+                "2020-01-02T03:04:05.12+02:00",
+                null
+              ]
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "default": "0f8fad5b-d9cb-469f-a165-70867728950e"
+            }
+          },
+          {
+            "name": "pw",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "password",
+              "default": "secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Values"
+                }
+              },
+              "application/json": {
+                "example": {
+                  "a": [
+                    1,
+                    2
+                  ]
+                }
+              },
+              "text/plain": {
+                "example": "hi"
+              },
+              "application/xml": {
+                "example": null
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "security": [
+          {}
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "plain"
+            },
+            "application/json": {
+              "example": [
+                1,
+                {
+                  "b": 2
+                }
+              ]
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "body"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Values": {
+        "required": [
+          "a",
+          "m",
+          "z"
+        ],
+        "type": "object",
+        "properties": {
+          "z": {
+            "type": "string",
+            "enum": [
+              "x",
+              "y"
+            ]
+          },
+          "a": {
+            "type": "integer",
+            "format": "int32",
+            "example": 8,
+            "default": 7
+          },
+          "m": {
+            "type": "array",
+            "example": [
+              "a"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "n": {
+            "type": "number",
+            "format": "float",
+            "default": 3,
+            "enum": [
+              1,
+              2.5
+            ]
+          },
+          "d": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2020-01-02T03:04:05+05:30"
+          },
+          "o": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Values"
+          }
+        }
+      },
+      "EnumModel": {
+        "type": "string",
+        "enum": [
+          "a",
+          "null",
+          "3",
+          "true"
+        ]
+      },
+      "IntModel": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ]
+      },
+      "NumModel": {
+        "type": "number",
+        "example": 2,
+        "default": 1000
+      },
+      "BoolModel": {
+        "type": "boolean",
+        "example": true,
+        "default": false
+      },
+      "ArrUnique": {
+        "uniqueItems": false,
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "DateModel": {
+        "type": "string",
+        "format": "date",
+        "example": "2020-01-02"
+      },
+      "StrExample": {
+        "type": "string",
+        "example": "{a=1}"
+      },
+      "Weird": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "file",
+            "format": "binary",
+            "x-b": 2,
+            "x-a": 1
+          }
+        },
+        "x-z": 1,
+        "x-a": 2
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

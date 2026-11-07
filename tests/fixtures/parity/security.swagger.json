@@ -1,0 +1,110 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Security",
+    "version": "1.0.0"
+  },
+  "securityDefinitions": {
+    "basicAuth": {
+      "type": "basic",
+      "description": "Basic"
+    },
+    "apiKeyHeader": {
+      "type": "apiKey",
+      "name": "X-API-Key",
+      "in": "header",
+      "description": "Header key"
+    },
+    "apiKeyQuery": {
+      "type": "apiKey",
+      "name": "api_key",
+      "in": "query",
+      "x-sec-ext": 1
+    },
+    "implicit": {
+      "type": "oauth2",
+      "flow": "implicit",
+      "authorizationUrl": "https://auth.example.com/authorize",
+      "scopes": {
+        "read": "Read",
+        "write": "Write"
+      },
+      "description": "Implicit"
+    },
+    "password": {
+      "type": "oauth2",
+      "flow": "password",
+      "tokenUrl": "https://auth.example.com/token",
+      "scopes": {
+        "read": "Read"
+      }
+    },
+    "application": {
+      "type": "oauth2",
+      "flow": "application",
+      "tokenUrl": "https://auth.example.com/token",
+      "scopes": {}
+    },
+    "accessCode": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://auth.example.com/authorize",
+      "tokenUrl": "https://auth.example.com/token",
+      "scopes": {
+        "admin": "Admin"
+      },
+      "x-oauth-ext": "o"
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    },
+    {
+      "implicit": [
+        "read"
+      ]
+    }
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "security": [
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "apiKeyQuery": [],
+            "accessCode": [
+              "admin"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/b": {
+      "get": {
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/c": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  }
+}

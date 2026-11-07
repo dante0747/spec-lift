@@ -1,0 +1,178 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Responses",
+    "version": "1.0.0"
+  },
+  "produces": [
+    "application/json",
+    "application/xml"
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "With headers",
+            "schema": {
+              "$ref": "#/definitions/Thing"
+            },
+            "headers": {
+              "X-Rate-Limit": {
+                "type": "integer",
+                "format": "int32",
+                "description": "calls per hour"
+              },
+              "X-Expires": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "X-List": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "collectionFormat": "csv"
+              },
+              "X-Ext": {
+                "type": "string",
+                "x-header-ext": 1
+              }
+            }
+          },
+          "201": {
+            "description": "With examples",
+            "schema": {
+              "type": "object"
+            },
+            "examples": {
+              "application/json": {
+                "id": 1
+              },
+              "application/xml": "<id>1</id>"
+            }
+          },
+          "202": {
+            "description": "No schema"
+          },
+          "203": {
+            "description": "Examples without schema",
+            "examples": {
+              "application/json": {
+                "a": 1
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "x-resp-ext": "r"
+          }
+        }
+      }
+    },
+    "/file": {
+      "get": {
+        "produces": [
+          "application/octet-stream"
+        ],
+        "responses": {
+          "200": {
+            "description": "File",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/override": {
+      "get": {
+        "produces": [
+          "text/csv"
+        ],
+        "responses": {
+          "200": {
+            "description": "csv",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/arr": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "arr",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Thing"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "BadRequest": {
+      "description": "Bad",
+      "schema": {
+        "$ref": "#/definitions/Error"
+      }
+    },
+    "NotFound": {
+      "description": "Not found",
+      "headers": {
+        "X-Why": {
+          "type": "string"
+        }
+      }
+    },
+    "Example": {
+      "description": "Example",
+      "schema": {
+        "type": "string"
+      },
+      "examples": {
+        "application/json": "hi"
+      }
+    }
+  },
+  "definitions": {
+    "Thing": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

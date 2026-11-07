@@ -32,8 +32,10 @@ test("renders the SpecLift converter", async () => {
     html,
     /<title>SpecLift — Private Swagger 2 to OpenAPI 3 Converter<\/title>/i,
   );
-  assert.match(html, /Modernize your API spec/);
+  assert.match(html, /Lift your API spec to/);
   assert.match(html, /Nothing leaves this browser/);
   assert.match(html, /Convert to OpenAPI 3/);
+  assert.match(html, /JSON &amp; YAML/);
+  assert.match(html, /What changes/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });

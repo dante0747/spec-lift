@@ -1,0 +1,194 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Definitions",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Base": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        },
+        "discriminator": {
+          "propertyName": "kind"
+        },
+        "x-model-ext": 1
+      },
+      "Cat": {
+        "description": "A cat",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lives": {
+                "type": "integer"
+              }
+            }
+          }
+        ]
+      },
+      "Nullable": {
+        "type": "object",
+        "properties": {
+          "maybe": {
+            "type": "string",
+            "nullable": true
+          },
+          "notNull": {
+            "type": "string",
+            "nullable": false
+          }
+        },
+        "nullable": true,
+        "x-nullable": true
+      },
+      "Map": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "MapRef": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/Cat"
+        }
+      },
+      "MapBool": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "WithExample": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string",
+            "example": "x"
+          }
+        },
+        "example": {
+          "a": "x"
+        }
+      },
+      "Xml": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "xml": {
+              "attribute": true
+            }
+          },
+          "list": {
+            "type": "array",
+            "xml": {
+              "name": "items",
+              "wrapped": true
+            },
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "xml": {
+          "name": "xmlThing",
+          "namespace": "http://example.com",
+          "prefix": "ex",
+          "wrapped": false
+        }
+      },
+      "Enum": {
+        "title": "Enum title",
+        "type": "string",
+        "default": "a",
+        "enum": [
+          "a",
+          "b",
+          "c"
+        ]
+      },
+      "FileProp": {
+        "type": "object",
+        "properties": {
+          "f": {
+            "type": "file",
+            "format": "binary"
+          }
+        }
+      },
+      "Constraints": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "multipleOf": 0.1,
+            "maximum": 2,
+            "minimum": 1,
+            "exclusiveMinimum": true,
+            "type": "number"
+          },
+          "s": {
+            "maxLength": 9,
+            "minLength": 1,
+            "pattern": "^x",
+            "type": "string"
+          },
+          "a": {
+            "maxItems": 5,
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "ExternalDocs": {
+        "type": "object",
+        "externalDocs": {
+          "url": "https://x.y"
+        }
+      },
+      "Ref": {
+        "$ref": "#/components/schemas/Base"
+      },
+      "Tuple": {
+        "type": "array"
+      },
+      "Any": {
+        "type": "object"
+      },
+      "Free": {
+        "type": "object"
+      },
+      "Name.With.Dots": {
+        "type": "string"
+      },
+      "Name With Spaces": {
+        "type": "integer"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

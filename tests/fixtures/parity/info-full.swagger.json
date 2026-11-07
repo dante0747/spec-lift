@@ -1,0 +1,74 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Full info",
+    "description": "Desc",
+    "termsOfService": "https://example.com/terms",
+    "contact": {
+      "name": "Team",
+      "url": "https://example.com",
+      "email": "team@example.com",
+      "x-contact-ext": 1
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT",
+      "x-license-ext": true
+    },
+    "version": "2.3.4",
+    "x-info-ext": {
+      "a": 1
+    }
+  },
+  "host": "example.com",
+  "tags": [
+    {
+      "name": "pets",
+      "description": "Pets",
+      "externalDocs": {
+        "url": "https://docs.example.com/pets",
+        "description": "More"
+      },
+      "x-tag-ext": "t"
+    },
+    {
+      "name": "store"
+    }
+  ],
+  "externalDocs": {
+    "description": "Docs",
+    "url": "https://docs.example.com"
+  },
+  "x-root-ext": "root",
+  "x-logo": {
+    "url": "https://example.com/logo.png"
+  },
+  "paths": {
+    "x-paths-ext": "p",
+    "/ping": {
+      "x-path-ext": "pi",
+      "get": {
+        "tags": [
+          "pets"
+        ],
+        "summary": "Ping",
+        "description": "Ping desc",
+        "operationId": "ping",
+        "deprecated": true,
+        "externalDocs": {
+          "url": "https://x.y"
+        },
+        "x-op-ext": [
+          1,
+          2
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "x-responses-ext": 1
+        }
+      }
+    }
+  }
+}

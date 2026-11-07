@@ -1,0 +1,20 @@
+swagger: "2.0"
+info:
+  title: probe
+  version: "1"
+paths:
+  /a:
+    get:
+      parameters:
+        - name: p
+          in: query
+          type: string
+          default: x
+      responses:
+        "200":
+          description: ok
+          examples:
+            application/json:
+              stamp: 2021-01-01T10:00:00Z
+              day: 2021-01-01
+              ok: yes

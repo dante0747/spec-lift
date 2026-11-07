@@ -1,4 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -9,7 +12,7 @@ const siteOrigin = new URL(siteUrl).origin;
 const previewImage = new URL(`${basePath}/og.png`, siteOrigin).toString();
 const title = "SpecLift — Private Swagger 2 to OpenAPI 3 Converter";
 const description =
-  "Convert Swagger 2 JSON to OpenAPI 3.0.3 entirely in your browser. No uploads, accounts, telemetry, or external services.";
+  "Convert Swagger 2.0 JSON or YAML to OpenAPI 3 entirely in your browser, with the same output as Swagger's official converter. No uploads, accounts, telemetry, or external services.";
 
 export const metadata: Metadata = {
   title,
@@ -29,7 +32,7 @@ export const metadata: Metadata = {
         url: previewImage,
         width: 1731,
         height: 909,
-        alt: "SpecLift Swagger 2.0 to OpenAPI 3.0.3 converter",
+        alt: "SpecLift Swagger 2.0 to OpenAPI 3 converter",
       },
     ],
   },
@@ -39,6 +42,11 @@ export const metadata: Metadata = {
     description,
     images: [previewImage],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#070a12",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({

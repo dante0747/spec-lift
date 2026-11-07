@@ -1,0 +1,821 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Parameter variants",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/p": {
+      "post": {
+        "parameters": [
+          {
+            "name": "int_default_str",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 5
+            }
+          },
+          {
+            "name": "int_default_bad",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "num_default",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "default": 1.5
+            }
+          },
+          {
+            "name": "num_default_int",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "default": 2
+            }
+          },
+          {
+            "name": "bool_default_str",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "bool_default_bad",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "str_default_num",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "7"
+            }
+          },
+          {
+            "name": "arr_default",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": "[\"a\",\"b\"]"
+            }
+          },
+          {
+            "name": "int_enum",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ]
+            }
+          },
+          {
+            "name": "num_enum",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "enum": [
+                1.5,
+                2
+              ]
+            }
+          },
+          {
+            "name": "bool_enum",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "enum": [
+                true,
+                false
+              ]
+            }
+          },
+          {
+            "name": "arr_enum",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "enum": [
+                "a"
+              ]
+            }
+          },
+          {
+            "name": "arr_items_enum",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "name": "fmt_datetime",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": "2020-01-02T03:04:05Z"
+            }
+          },
+          {
+            "name": "fmt_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "default": "2020-01-02T00:00:00.000+00:00"
+            }
+          },
+          {
+            "name": "fmt_custom_int",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "weird"
+            }
+          },
+          {
+            "name": "unknown_type",
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "no_type",
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "file_q",
+            "in": "query",
+            "schema": {
+              "type": "file"
+            }
+          },
+          {
+            "name": "readonly",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "desc_blank",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "required_false",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "aev_false",
+            "in": "query",
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x_examples",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "x-keep": "k"
+            },
+            "x-keep": "k"
+          },
+          {
+            "name": "multipleOf_int",
+            "in": "query",
+            "schema": {
+              "multipleOf": 3,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "arr_unique_false",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "uniqueItems": false,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "arr_minmax",
+            "in": "query",
+            "style": "pipeDelimited",
+            "schema": {
+              "maxItems": 9,
+              "minItems": 0,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "arr_items_ref",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/T"
+              }
+            }
+          },
+          {
+            "name": "arr_no_items",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array"
+            }
+          },
+          {
+            "name": "pattern_arr",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "minLength": 2,
+                "pattern": "^x",
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "{a=1}"
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "Body"
+      }
+    },
+    "/form": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "f_int_default": {
+                    "type": "integer",
+                    "format": "int32",
+                    "default": 5,
+                    "enum": [
+                      "1",
+                      "5"
+                    ]
+                  },
+                  "f_arr": {
+                    "minItems": 1,
+                    "uniqueItems": false,
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "default": "[1]"
+                  },
+                  "f_fmt": {
+                    "multipleOf": 2,
+                    "pattern": "^2",
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "example": "2020-01-01T00:00:00Z",
+                    "x-ext": 1
+                  },
+                  "f_num": {
+                    "maximum": 9,
+                    "minimum": 1,
+                    "exclusiveMinimum": true,
+                    "type": "number",
+                    "format": "float",
+                    "enum": [
+                      "1.5"
+                    ]
+                  },
+                  "f_bool": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "f_custom": {
+                    "type": "string",
+                    "format": "weird"
+                  },
+                  "f_unknown": {},
+                  "f_required_false": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/dup": {
+      "get": {
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shared",
+            "in": "query",
+            "description": "global",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "name": "shared",
+            "in": "query",
+            "description": "global",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/op-ref-dup": {
+      "get": {
+        "parameters": [
+          {
+            "name": "shared",
+            "in": "query",
+            "description": "global",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "other",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/missing-ref": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Nope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/T"
+                }
+              }
+            },
+            "x-ext": 1
+          },
+          "404": {
+            "$ref": "#/components/responses/Nope"
+          }
+        }
+      }
+    },
+    "/deprecated-false": {
+      "get": {
+        "operationId": "op",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/resp-ordering": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          },
+          "404": {
+            "description": "nf",
+            "content": {}
+          },
+          "default": {
+            "description": "d",
+            "content": {}
+          },
+          "2XX": {
+            "description": "range",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/headers-many": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-B": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-A": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "x-lower": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Rate-Limit-Remaining": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Link": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          }
+        }
+      }
+    },
+    "/resp-schema-variants": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "obj",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "a": {
+                      "type": "integer"
+                    }
+                  },
+                  "example": {
+                    "a": 1
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "map",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/T"
+                  }
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "allOf",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/T"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "file in array",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "file",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "205": {
+            "description": "header variants",
+            "headers": {
+              "H1": {
+                "description": "h",
+                "schema": {
+                  "type": "integer",
+                  "nullable": true
+                }
+              },
+              "H2": {
+                "description": "arr",
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "content": {}
+          }
+        }
+      }
+    },
+    "/form-and-body": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "f": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "b"
+      }
+    },
+    "/two-bodies": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "b2"
+      }
+    },
+    "/global-body-ref-path-level": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/T"
+              }
+            }
+          },
+          "required": true,
+          "x-ext": 1
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "bodyG"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "T": {
+        "type": "object"
+      }
+    },
+    "responses": {
+      "Ok": {
+        "description": "ok",
+        "content": {
+          "*/*": {
+            "schema": {
+              "$ref": "#/components/schemas/T"
+            }
+          }
+        },
+        "x-ext": 1
+      }
+    },
+    "parameters": {
+      "Shared": {
+        "name": "shared",
+        "in": "query",
+        "description": "global",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "requestBodies": {
+      "BodyG": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/T"
+            }
+          }
+        },
+        "required": true,
+        "x-ext": 1
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

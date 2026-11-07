@@ -1,0 +1,182 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Shared mutation",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "parameters": [
+          {
+            "name": "trace",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "example": "abc"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "x-keep": 1
+            },
+            "x-keep": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "shared",
+            "headers": {
+              "X-Id": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "name": "trace",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "discriminator": {
+                  "propertyName": "kind"
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "shared",
+            "headers": {
+              "X-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "body"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "name": "trace",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "x-keep": 1
+            },
+            "x-keep": 1
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "gone",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Shared": {
+        "description": "shared",
+        "headers": {
+          "X-Id": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "*/*": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "format": "int32",
+          "nullable": true,
+          "x-keep": 1
+        },
+        "example": 5,
+        "x-keep": 1
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

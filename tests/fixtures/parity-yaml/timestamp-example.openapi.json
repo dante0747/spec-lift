@@ -1,0 +1,44 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "probe",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "parameters": [
+          {
+            "name": "p",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "x"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": {
+                  "stamp": "2021-01-01T10:00:00Z",
+                  "day": "2021-01-01",
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

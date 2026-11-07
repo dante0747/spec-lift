@@ -1,0 +1,211 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Forms",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/urlencoded": {
+      "post": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "formData",
+            "type": "string",
+            "required": true,
+            "description": "Name"
+          },
+          {
+            "name": "age",
+            "in": "formData",
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "default": 1
+          },
+          {
+            "name": "tags",
+            "in": "formData",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "csv",
+            "in": "formData",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ]
+            },
+            "collectionFormat": "csv"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/multipart": {
+      "post": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "parameters": [
+          {
+            "name": "file",
+            "in": "formData",
+            "type": "file",
+            "required": true,
+            "description": "Upload"
+          },
+          {
+            "name": "meta",
+            "in": "formData",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/no-consumes": {
+      "post": {
+        "parameters": [
+          {
+            "name": "f",
+            "in": "formData",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/global-form": {
+      "post": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/Upload"
+          },
+          {
+            "$ref": "#/parameters/Note"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/global-form-single": {
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Upload"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/path-level/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "shared",
+          "in": "formData",
+          "type": "string"
+        }
+      ],
+      "post": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "own",
+            "in": "formData",
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/both-consumes": {
+      "post": {
+        "consumes": [
+          "multipart/form-data",
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "x",
+            "in": "formData",
+            "type": "number",
+            "format": "float"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Upload": {
+      "name": "upload",
+      "in": "formData",
+      "type": "file",
+      "required": true,
+      "description": "Global upload"
+    },
+    "Note": {
+      "name": "note",
+      "in": "formData",
+      "type": "string",
+      "maxLength": 10
+    }
+  }
+}

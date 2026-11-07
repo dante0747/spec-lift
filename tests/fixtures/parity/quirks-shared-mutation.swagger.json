@@ -1,0 +1,96 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Shared mutation",
+    "version": "1.0.0"
+  },
+  "consumes": [
+    "application/json",
+    "application/xml"
+  ],
+  "paths": {
+    "/a": {
+      "parameters": [
+        {
+          "name": "trace",
+          "in": "header",
+          "type": "string",
+          "x-example": "abc",
+          "x-nullable": true
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Shared"
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "discriminator": "kind",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "x-nullable": true
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Shared"
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "gone"
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Limit": {
+      "name": "limit",
+      "in": "query",
+      "type": "integer",
+      "format": "int32",
+      "x-example": 5,
+      "x-nullable": true,
+      "x-keep": 1
+    }
+  },
+  "responses": {
+    "Shared": {
+      "description": "shared",
+      "headers": {
+        "X-Id": {
+          "type": "string",
+          "x-nullable": true
+        }
+      },
+      "schema": {
+        "type": "string"
+      }
+    }
+  }
+}

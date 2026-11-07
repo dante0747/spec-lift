@@ -22,132 +22,89 @@ async function loadReferenceHelpers() {
 
 const helpers = await loadReferenceHelpers();
 
-const globalParameters = {
-  Limit: {
-    name: "limit",
-    in: "query",
-    type: "integer",
-  },
-  Payload: {
-    name: "payload",
-    in: "body",
-    required: true,
-    schema: { $ref: "#/definitions/Payload" },
-  },
-  Upload: {
-    name: "file",
-    in: "formData",
-    type: "file",
-  },
-  PayloadAlias: {
-    $ref: "#/parameters/Payload",
-  },
-};
+test("classifies refs like Swagger's GenericRef", () => {
+  assert.equal(helpers.refFormat("#/definitions/Pet"), "internal");
+  assert.equal(helpers.refFormat("Pet"), "internal");
+  assert.equal(helpers.refFormat("models.json#/Pet"), "relative");
+  assert.equal(helpers.refFormat("./models.json"), "relative");
+  assert.equal(helpers.refFormat("/abs/models.json"), "relative");
+  assert.equal(helpers.refFormat("https://example.com/x.json"), "url");
+});
 
-const globalResponses = {
-  NotFound: {
-    description: "Not found",
-    schema: { $ref: "#/definitions/Problem" },
-  },
-  NotFoundAlias: {
-    $ref: "#/responses/NotFound",
-  },
-};
-
-test("rewrites reusable ordinary parameters as component parameters", () => {
-  const parameter = { $ref: "#/parameters/Limit" };
-
+test("expands bare names into the matching section", () => {
   assert.equal(
-    helpers.parameterKind(parameter, globalParameters),
-    "parameter",
+    helpers.normalizeRef("definitions", "Pet"),
+    "#/definitions/Pet",
   );
-  assert.deepEqual(
-    helpers.convertParameterReference(parameter, globalParameters),
-    { $ref: "#/components/parameters/Limit" },
+  assert.equal(
+    helpers.normalizeRef("parameters", "Limit"),
+    "#/parameters/Limit",
+  );
+  assert.equal(
+    helpers.normalizeRef("definitions", "#/definitions/Pet"),
+    "#/definitions/Pet",
+  );
+  assert.equal(
+    helpers.normalizeRef("definitions", "models.json#/Pet"),
+    "models.json#/Pet",
   );
 });
 
-test("rewrites reusable body parameters as request bodies", () => {
-  const parameter = { $ref: "#/parameters/Payload" };
+test("resolves local parameter, response, and path refs", () => {
+  const parameters = { Limit: { name: "limit" }, "a/b": { name: "slash" } };
 
   assert.equal(
-    helpers.parameterKind(parameter, globalParameters),
-    "body",
+    helpers.resolveLocalRef("#/parameters/Limit", "parameters", parameters),
+    parameters.Limit,
   );
-  assert.deepEqual(
-    helpers.convertParameterReference(parameter, globalParameters),
-    { $ref: "#/components/requestBodies/Payload" },
+  assert.equal(
+    helpers.resolveLocalRef("#/parameters/a~1b", "parameters", parameters),
+    parameters["a/b"],
+  );
+  assert.equal(
+    helpers.resolveLocalRef("#/parameters/Missing", "parameters", parameters),
+    undefined,
+  );
+  assert.equal(
+    helpers.resolveLocalRef("#/responses/Limit", "parameters", parameters),
+    undefined,
+  );
+  assert.equal(
+    helpers.resolveLocalRef("#/paths/~1pets", "paths", { "/pets": 1 }),
+    1,
   );
 });
 
-test("resolves aliases and form-data parameter references", () => {
+test("rewrites refs into OpenAPI component locations", () => {
   assert.equal(
-    helpers.parameterKind(
-      { $ref: "#/parameters/PayloadAlias" },
-      globalParameters,
-    ),
-    "body",
+    helpers.schemaRef("#/definitions/Pet"),
+    "#/components/schemas/Pet",
   );
   assert.equal(
-    helpers.rewriteOpenApiReference(
-      "#/parameters/Upload",
-      globalParameters,
-    ),
-    "#/components/requestBodies/Upload",
-  );
-  assert.equal(
-    helpers.dereferenceParameter(
-      { $ref: "#/parameters/PayloadAlias" },
-      globalParameters,
-    ),
-    globalParameters.Payload,
+    helpers.responseRef("#/responses/NotFound"),
+    "#/components/responses/NotFound",
   );
 });
 
-test("keeps external references intact", () => {
+test("keeps external refs intact", () => {
   assert.equal(
-    helpers.rewriteOpenApiReference(
-      "shared-parameters.json#/Limit",
-      globalParameters,
-    ),
-    "shared-parameters.json#/Limit",
+    helpers.schemaRef("models.json#/definitions/Pet"),
+    "models.json#/definitions/Pet",
   );
   assert.equal(
-    helpers.rewriteOpenApiReference(
-      "models.json#/definitions/Payload",
-      globalParameters,
-    ),
-    "models.json#/definitions/Payload",
-  );
-  assert.equal(
-    helpers.rewriteOpenApiReference(
-      "responses.json#/responses/NotFound",
-      globalParameters,
-    ),
+    helpers.responseRef("responses.json#/responses/NotFound"),
     "responses.json#/responses/NotFound",
   );
   assert.equal(
-    helpers.rewriteOpenApiReference(
-      "#/x-reference-map/~1definitions~1Payload",
-      globalParameters,
-    ),
+    helpers.schemaRef("#/x-reference-map/~1definitions~1Payload"),
     "#/x-reference-map/~1definitions~1Payload",
   );
 });
 
-test("rewrites and resolves reusable response references", () => {
+test("takes the last segment as the simple name of internal refs", () => {
+  assert.equal(helpers.simpleRefName("#/parameters/Limit"), "Limit");
   assert.equal(
-    helpers.rewriteOpenApiReference(
-      "#/responses/NotFound",
-      globalParameters,
-    ),
-    "#/components/responses/NotFound",
-  );
-  assert.equal(
-    helpers.dereferenceResponse(
-      { $ref: "#/responses/NotFoundAlias" },
-      globalResponses,
-    ),
-    globalResponses.NotFound,
+    helpers.simpleRefName("models.json#/Limit"),
+    "models.json#/Limit",
   );
 });

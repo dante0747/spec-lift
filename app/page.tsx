@@ -3,885 +3,287 @@
 import {
   type ChangeEvent,
   type DragEvent,
-  type KeyboardEvent,
+  useCallback,
+  useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { CodeEditor, CodeView } from "./code-editor";
+import { convertSwagger, countOperations } from "./converter";
+import { isRecord, type JsonRecord } from "./converter-refs";
+import { highlight } from "./highlight";
 import {
-  convertParameterReference,
-  dereferenceParameter,
-  dereferenceResponse,
-  isRecord,
-  parameterKind,
-  rewriteOpenApiReference,
-  type JsonRecord,
-} from "./converter-refs";
+  ArrowDownIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  CopyIcon,
+  CpuIcon,
+  DownloadIcon,
+  EyeOffIcon,
+  GitHubIcon,
+  LockIcon,
+  LogoMark,
+  ScaleIcon,
+  ShieldIcon,
+  TrashIcon,
+  UploadIcon,
+  WandIcon,
+} from "./icons";
+import { SAMPLES } from "./samples";
+import { parseSpec, serializeSpec, type SpecFormat } from "./spec-format";
 
-const SAMPLE_SWAGGER = {
-  swagger: "2.0",
-  info: {
-    title: "Orders API",
-    description: "Create and track customer orders.",
-    version: "1.4.0",
-  },
-  host: "api.example.com",
-  basePath: "/v1",
-  schemes: ["https"],
-  consumes: ["application/json"],
-  produces: ["application/json"],
-  paths: {
-    "/orders": {
-      get: {
-        summary: "List orders",
-        operationId: "listOrders",
-        parameters: [
-          {
-            name: "limit",
-            in: "query",
-            type: "integer",
-            format: "int32",
-            default: 20,
-          },
-        ],
-        responses: {
-          "200": {
-            description: "A list of orders",
-            schema: {
-              type: "array",
-              items: { $ref: "#/definitions/Order" },
-            },
-          },
-        },
-      },
-      post: {
-        summary: "Create an order",
-        operationId: "createOrder",
-        parameters: [
-          {
-            name: "order",
-            in: "body",
-            required: true,
-            schema: { $ref: "#/definitions/NewOrder" },
-          },
-        ],
-        responses: {
-          "201": {
-            description: "Order created",
-            schema: { $ref: "#/definitions/Order" },
-          },
-        },
-      },
-    },
-  },
-  definitions: {
-    NewOrder: {
-      type: "object",
-      required: ["productId", "quantity"],
-      properties: {
-        productId: { type: "string" },
-        quantity: { type: "integer", minimum: 1 },
-      },
-    },
-    Order: {
-      allOf: [
-        { $ref: "#/definitions/NewOrder" },
-        {
-          type: "object",
-          properties: {
-            id: { type: "string" },
-            status: { type: "string", enum: ["pending", "shipped"] },
-          },
-        },
-      ],
-    },
-  },
-};
+const REPO_URL = "https://github.com/dante0747/spec-lift";
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const LIVE_LIMIT = 2 * 1024 * 1024;
 
-const SAMPLE_TEXT = JSON.stringify(SAMPLE_SWAGGER, null, 2);
-const HTTP_METHODS = new Set([
-  "get",
-  "put",
-  "post",
-  "delete",
-  "options",
-  "head",
-  "patch",
-  "trace",
-]);
-
-function rewriteRefs(
-  value: unknown,
-  globalParameters: JsonRecord = {},
-): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => rewriteRefs(item, globalParameters));
-  }
-
-  if (!isRecord(value)) {
-    return value;
-  }
-
-  const output: JsonRecord = {};
-  for (const [key, nestedValue] of Object.entries(value)) {
-    if (key === "$ref" && typeof nestedValue === "string") {
-      output[key] = rewriteOpenApiReference(
-        nestedValue,
-        globalParameters,
-      );
-    } else {
-      output[key] = rewriteRefs(nestedValue, globalParameters);
-    }
-  }
-  return output;
-}
-
-function parameterSchema(
-  parameter: JsonRecord,
-  globalParameters: JsonRecord = {},
-): JsonRecord {
-  if (isRecord(parameter.schema)) {
-    return rewriteRefs(parameter.schema, globalParameters) as JsonRecord;
-  }
-
-  const schemaKeys = [
-    "type",
-    "format",
-    "items",
-    "default",
-    "maximum",
-    "exclusiveMaximum",
-    "minimum",
-    "exclusiveMinimum",
-    "maxLength",
-    "minLength",
-    "pattern",
-    "maxItems",
-    "minItems",
-    "uniqueItems",
-    "enum",
-    "multipleOf",
-  ];
-  const schema: JsonRecord = {};
-
-  for (const key of schemaKeys) {
-    if (parameter[key] !== undefined) {
-      schema[key] = rewriteRefs(parameter[key], globalParameters);
-    }
-  }
-
-  if (schema.type === "file") {
-    schema.type = "string";
-    schema.format = "binary";
-  }
-
-  return schema;
-}
-
-function collectionStyle(collectionFormat: unknown, location: unknown) {
-  if (collectionFormat === "multi") {
-    return location === "query"
-      ? { style: "form", explode: true }
-      : { style: "simple", explode: true };
-  }
-  if (collectionFormat === "ssv") return { style: "spaceDelimited", explode: false };
-  if (collectionFormat === "pipes") return { style: "pipeDelimited", explode: false };
-  if (collectionFormat === "csv") {
-    return location === "query"
-      ? { style: "form", explode: false }
-      : { style: "simple", explode: false };
-  }
-  return {};
-}
-
-function convertParameter(
-  parameter: JsonRecord,
-  globalParameters: JsonRecord = {},
-): JsonRecord {
-  const reference = convertParameterReference(
-    parameter,
-    globalParameters,
-  );
-  if (reference) return reference;
-
-  const output: JsonRecord = {};
-  const preserved = [
-    "name",
-    "in",
-    "description",
-    "required",
-    "deprecated",
-    "allowEmptyValue",
-  ];
-
-  for (const key of preserved) {
-    if (parameter[key] !== undefined) {
-      output[key] = parameter[key];
-    }
-  }
-
-  output.schema = parameterSchema(parameter, globalParameters);
-  Object.assign(
-    output,
-    collectionStyle(parameter.collectionFormat, parameter.in),
-  );
-  return rewriteRefs(output, globalParameters) as JsonRecord;
-}
-
-function convertBodyParameter(
-  parameter: JsonRecord,
-  mediaTypes: string[],
-  globalParameters: JsonRecord,
-  inlineReference = false,
-): JsonRecord {
-  if (inlineReference) {
-    const resolved = dereferenceParameter(
-      parameter,
-      globalParameters,
-    );
-    if (resolved !== parameter) {
-      return convertBodyParameter(
-        resolved,
-        mediaTypes,
-        globalParameters,
-        false,
-      );
-    }
-  }
-
-  const reference = convertParameterReference(
-    parameter,
-    globalParameters,
-  );
-  if (reference) return reference;
-
-  const content: JsonRecord = {};
-  for (const mediaType of mediaTypes.length > 0
-    ? mediaTypes
-    : ["application/json"]) {
-    content[mediaType] = {
-      schema: parameterSchema(parameter, globalParameters),
-    };
-  }
-
-  return {
-    ...(parameter.description !== undefined
-      ? { description: parameter.description }
-      : {}),
-    ...(parameter.required !== undefined
-      ? { required: parameter.required }
-      : {}),
-    content,
-  };
-}
-
-function convertFormParameters(
-  parameters: JsonRecord[],
-  mediaTypes: string[],
-  globalParameters: JsonRecord,
-): JsonRecord {
-  const properties: JsonRecord = {};
-  const required: string[] = [];
-
-  for (const parameter of parameters) {
-    const resolved = dereferenceParameter(
-      parameter,
-      globalParameters,
-    );
-    if (typeof resolved.name !== "string") continue;
-
-    properties[resolved.name] = {
-      ...parameterSchema(resolved, globalParameters),
-      ...(resolved.description
-        ? { description: resolved.description }
-        : {}),
-    };
-    if (resolved.required) required.push(resolved.name);
-  }
-
-  const formSchema: JsonRecord = { type: "object", properties };
-  if (required.length > 0) formSchema.required = required;
-
-  const content: JsonRecord = {};
-  for (const mediaType of mediaTypes.length > 0
-    ? mediaTypes
-    : ["application/x-www-form-urlencoded"]) {
-    content[mediaType] = { schema: formSchema };
-  }
-
-  return {
-    content,
-    ...(required.length > 0 ? { required: true } : {}),
-  };
-}
-
-function convertResponse(
-  response: unknown,
-  mediaTypes: string[],
-  globalResponses: JsonRecord = {},
-  inlineReference = false,
-): unknown {
-  if (!isRecord(response)) return response;
-
-  if (inlineReference) {
-    const resolved = dereferenceResponse(response, globalResponses);
-    if (resolved !== response) {
-      return convertResponse(
-        resolved,
-        mediaTypes,
-        globalResponses,
-        false,
-      );
-    }
-  }
-
-  if (typeof response.$ref === "string") {
-    return {
-      $ref: rewriteOpenApiReference(response.$ref, {}),
-    };
-  }
-
-  const output: JsonRecord = {};
-  for (const [key, value] of Object.entries(response)) {
-    if (!["schema", "examples"].includes(key)) {
-      output[key] = rewriteRefs(value);
-    }
-  }
-
-  if (isRecord(response.headers)) {
-    const headers: JsonRecord = {};
-    for (const [name, header] of Object.entries(response.headers)) {
-      headers[name] = isRecord(header)
-        ? {
-            ...(header.description !== undefined
-              ? { description: header.description }
-              : {}),
-            schema: parameterSchema(header),
-          }
-        : header;
-    }
-    output.headers = headers;
-  }
-
-  if (response.schema !== undefined || isRecord(response.examples)) {
-    const content: JsonRecord = {};
-    const types =
-      mediaTypes.length > 0
-        ? mediaTypes
-        : isRecord(response.examples)
-          ? Object.keys(response.examples)
-          : ["application/json"];
-
-    for (const mediaType of types) {
-      const media: JsonRecord = {};
-      if (response.schema !== undefined) {
-        media.schema = rewriteRefs(response.schema);
-      }
-      if (isRecord(response.examples) && response.examples[mediaType] !== undefined) {
-        media.example = response.examples[mediaType];
-      }
-      content[mediaType] = media;
-    }
-    output.content = content;
-  }
-
-  return output;
-}
-
-function oauthFlow(definition: JsonRecord): JsonRecord {
-  const scopes = isRecord(definition.scopes) ? definition.scopes : {};
-  switch (definition.flow) {
-    case "implicit":
-      return {
-        implicit: {
-          authorizationUrl: definition.authorizationUrl,
-          scopes,
-        },
-      };
-    case "password":
-      return {
-        password: {
-          tokenUrl: definition.tokenUrl,
-          scopes,
-        },
-      };
-    case "application":
-      return {
-        clientCredentials: {
-          tokenUrl: definition.tokenUrl,
-          scopes,
-        },
-      };
-    case "accessCode":
-      return {
-        authorizationCode: {
-          authorizationUrl: definition.authorizationUrl,
-          tokenUrl: definition.tokenUrl,
-          scopes,
-        },
-      };
-    default:
-      return {};
-  }
-}
-
-function convertSecurityScheme(definition: unknown): unknown {
-  if (!isRecord(definition)) return definition;
-  if (definition.type === "basic") {
-    return {
-      type: "http",
-      scheme: "basic",
-      ...(definition.description
-        ? { description: definition.description }
-        : {}),
-    };
-  }
-  if (definition.type === "oauth2") {
-    return {
-      type: "oauth2",
-      ...(definition.description
-        ? { description: definition.description }
-        : {}),
-      flows: oauthFlow(definition),
-    };
-  }
-  return rewriteRefs(definition);
-}
-
-function convertSwagger(swagger: JsonRecord): JsonRecord {
-  if (swagger.swagger !== "2.0") {
-    throw new Error('Expected a Swagger document with "swagger": "2.0".');
-  }
-  if (!isRecord(swagger.info)) {
-    throw new Error('The document is missing the required "info" object.');
-  }
-  if (!isRecord(swagger.paths)) {
-    throw new Error('The document is missing the required "paths" object.');
-  }
-
-  const globalParameters = isRecord(swagger.parameters)
-    ? swagger.parameters
-    : {};
-  const globalResponses = isRecord(swagger.responses)
-    ? swagger.responses
-    : {};
-  const output: JsonRecord = {
-    openapi: "3.0.3",
-    info: rewriteRefs(swagger.info, globalParameters),
-  };
-
-  const rootFields = ["tags", "externalDocs", "security"];
-  for (const field of rootFields) {
-    if (swagger[field] !== undefined) {
-      output[field] = rewriteRefs(
-        swagger[field],
-        globalParameters,
-      );
-    }
-  }
-
-  const schemes = Array.isArray(swagger.schemes)
-    ? swagger.schemes.filter((scheme): scheme is string => typeof scheme === "string")
-    : [];
-  if (typeof swagger.host === "string") {
-    const serverSchemes = schemes.length > 0 ? schemes : ["https"];
-    output.servers = serverSchemes.map((scheme) => ({
-      url: `${scheme}://${swagger.host}${
-        typeof swagger.basePath === "string" ? swagger.basePath : ""
-      }`,
-    }));
-  } else if (typeof swagger.basePath === "string") {
-    output.servers = [{ url: swagger.basePath }];
-  }
-
-  const globalConsumes = Array.isArray(swagger.consumes)
-    ? swagger.consumes.filter((value): value is string => typeof value === "string")
-    : ["application/json"];
-  const globalProduces = Array.isArray(swagger.produces)
-    ? swagger.produces.filter((value): value is string => typeof value === "string")
-    : ["application/json"];
-
-  const paths: JsonRecord = {};
-  for (const [pathName, rawPath] of Object.entries(swagger.paths)) {
-    if (!isRecord(rawPath)) {
-      paths[pathName] = rawPath;
-      continue;
-    }
-
-    const inheritedParameters = Array.isArray(rawPath.parameters)
-      ? rawPath.parameters.filter(isRecord)
-      : [];
-    const pathItem: JsonRecord = {};
-    for (const [pathKey, rawOperation] of Object.entries(rawPath)) {
-      if (pathKey === "$ref") {
-        pathItem[pathKey] = rewriteRefs(
-          rawOperation,
-          globalParameters,
-        );
-        continue;
-      }
-
-      if (pathKey === "parameters" && Array.isArray(rawOperation)) {
-        pathItem.parameters = rawOperation
-          .filter(isRecord)
-          .filter((parameter) =>
-            ["parameter", "unknown"].includes(
-              parameterKind(parameter, globalParameters),
-            ),
-          )
-          .map((parameter) =>
-            convertParameter(
-              parameter,
-              globalParameters,
-            ),
-          );
-        continue;
-      }
-
-      if (!HTTP_METHODS.has(pathKey) || !isRecord(rawOperation)) {
-        pathItem[pathKey] = rewriteRefs(
-          rawOperation,
-          globalParameters,
-        );
-        continue;
-      }
-
-      const operation: JsonRecord = {};
-      const operationConsumes = Array.isArray(rawOperation.consumes)
-        ? rawOperation.consumes.filter(
-            (value): value is string => typeof value === "string",
-          )
-        : globalConsumes;
-      const operationProduces = Array.isArray(rawOperation.produces)
-        ? rawOperation.produces.filter(
-            (value): value is string => typeof value === "string",
-          )
-        : globalProduces;
-
-      for (const [key, value] of Object.entries(rawOperation)) {
-        if (!["parameters", "responses", "consumes", "produces", "schemes"].includes(key)) {
-          operation[key] = rewriteRefs(value, globalParameters);
-        }
-      }
-
-      const operationParameters = Array.isArray(rawOperation.parameters)
-        ? rawOperation.parameters.filter(isRecord)
-        : [];
-      const inheritedRequestParameters = inheritedParameters.filter(
-        (parameter) =>
-          ["body", "formData"].includes(
-            parameterKind(parameter, globalParameters),
-          ),
-      );
-      const requestParameters = [
-        ...operationParameters,
-        ...inheritedRequestParameters,
-      ];
-      const regularParameters = operationParameters.filter(
-        (parameter) =>
-          ["parameter", "unknown"].includes(
-            parameterKind(parameter, globalParameters),
-          ),
-      );
-      if (regularParameters.length > 0) {
-        operation.parameters = regularParameters.map((parameter) =>
-          convertParameter(
-            parameter,
-            globalParameters,
-          ),
-        );
-      }
-
-      const bodyParameter = requestParameters.find(
-        (parameter) =>
-          parameterKind(parameter, globalParameters) === "body",
-      );
-      const formParameters = requestParameters.filter(
-        (parameter) =>
-          parameterKind(parameter, globalParameters) ===
-          "formData",
-      );
-
-      if (bodyParameter) {
-        operation.requestBody = convertBodyParameter(
-          bodyParameter,
-          operationConsumes,
-          globalParameters,
-          Array.isArray(rawOperation.consumes),
-        );
-        const resolvedBodyParameter = dereferenceParameter(
-          bodyParameter,
-          globalParameters,
-        );
-        if (typeof resolvedBodyParameter.name === "string") {
-          operation["x-codegen-request-body-name"] =
-            resolvedBodyParameter.name;
-        }
-      } else if (formParameters.length > 0) {
-        const reusableFormBody =
-          formParameters.length === 1 &&
-          !Array.isArray(rawOperation.consumes)
-            ? convertParameterReference(
-                formParameters[0],
-                globalParameters,
-              )
-            : null;
-        operation.requestBody =
-          reusableFormBody ??
-          convertFormParameters(
-            formParameters,
-            operationConsumes,
-            globalParameters,
-          );
-      }
-
-      if (isRecord(rawOperation.responses)) {
-        const responses: JsonRecord = {};
-        for (const [status, response] of Object.entries(rawOperation.responses)) {
-          responses[status] = convertResponse(
-            response,
-            operationProduces,
-            globalResponses,
-            Array.isArray(rawOperation.produces),
-          );
-        }
-        operation.responses = responses;
-      }
-
-      if (Array.isArray(rawOperation.schemes) && typeof swagger.host === "string") {
-        operation.servers = rawOperation.schemes
-          .filter((scheme): scheme is string => typeof scheme === "string")
-          .map((scheme) => ({
-            url: `${scheme}://${swagger.host}${
-              typeof swagger.basePath === "string" ? swagger.basePath : ""
-            }`,
-          }));
-      }
-
-      pathItem[pathKey] = operation;
-    }
-    paths[pathName] = pathItem;
-  }
-  output.paths = paths;
-
-  const components: JsonRecord = {};
-  if (isRecord(swagger.definitions)) {
-    components.schemas = rewriteRefs(
-      swagger.definitions,
-      globalParameters,
-    );
-  }
-  if (isRecord(swagger.securityDefinitions)) {
-    const securitySchemes: JsonRecord = {};
-    for (const [name, definition] of Object.entries(swagger.securityDefinitions)) {
-      securitySchemes[name] = convertSecurityScheme(definition);
-    }
-    components.securitySchemes = securitySchemes;
-  }
-  if (isRecord(swagger.parameters)) {
-    const parameters: JsonRecord = {};
-    const requestBodies: JsonRecord = {};
-    for (const [name, parameter] of Object.entries(swagger.parameters)) {
-      if (!isRecord(parameter)) continue;
-
-      const kind = parameterKind(parameter, globalParameters);
-      if (kind === "body") {
-        requestBodies[name] = convertBodyParameter(
-          parameter,
-          globalConsumes,
-          globalParameters,
-        );
-      } else if (kind === "formData") {
-        requestBodies[name] = convertFormParameters(
-          [parameter],
-          globalConsumes,
-          globalParameters,
-        );
-      } else {
-        parameters[name] = convertParameter(
-          parameter,
-          globalParameters,
-        );
-      }
-    }
-    if (Object.keys(parameters).length > 0) components.parameters = parameters;
-    if (Object.keys(requestBodies).length > 0) {
-      components.requestBodies = requestBodies;
-    }
-  }
-  if (isRecord(swagger.responses)) {
-    const responses: JsonRecord = {};
-    for (const [name, response] of Object.entries(swagger.responses)) {
-      responses[name] = convertResponse(
-        response,
-        globalProduces,
-        globalResponses,
-      );
-    }
-    components.responses = responses;
-  }
-  if (Object.keys(components).length > 0) {
-    output.components = components;
-  }
-
-  return output;
-}
-
-function countOperations(paths: unknown) {
-  if (!isRecord(paths)) return 0;
-  return Object.values(paths).reduce<number>((count, path) => {
-    if (!isRecord(path)) return count;
-    return (
-      count +
-      Object.keys(path).filter((key) => HTTP_METHODS.has(key)).length
-    );
-  }, 0);
-}
-
-function initialOutput() {
-  return JSON.stringify(convertSwagger(SAMPLE_SWAGGER), null, 2);
-}
-
-type InputAssessment = {
+type Assessment = {
   status: "empty" | "invalid" | "valid";
+  format: SpecFormat;
   label: string;
   message: string;
+  document?: JsonRecord;
+  errorLine?: number;
 };
 
-function assessInput(source: string): InputAssessment {
+function assess(source: string): Assessment {
   if (!source.trim()) {
     return {
       status: "empty",
+      format: "json",
       label: "Waiting for input",
-      message: "Paste JSON or choose a Swagger 2.0 file.",
+      message: "Paste Swagger 2.0 JSON or YAML, or drop a file.",
     };
   }
 
-  try {
-    const parsed: unknown = JSON.parse(source);
-    if (!isRecord(parsed)) {
-      return {
-        status: "invalid",
-        label: "JSON object required",
-        message: "The top level of the document must be an object.",
-      };
-    }
-    if (parsed.swagger !== "2.0") {
-      return {
-        status: "invalid",
-        label: "Swagger 2.0 required",
-        message: 'Expected a document with "swagger": "2.0".',
-      };
-    }
-    if (!isRecord(parsed.info)) {
-      return {
-        status: "invalid",
-        label: "Missing info object",
-        message: 'Add the required top-level "info" object.',
-      };
-    }
-    if (!isRecord(parsed.paths)) {
-      return {
-        status: "invalid",
-        label: "Missing paths object",
-        message: 'Add the required top-level "paths" object.',
-      };
-    }
-
-    return {
-      status: "valid",
-      label: "Valid Swagger 2.0",
-      message: "Ready to convert locally.",
-    };
-  } catch (parseError) {
+  const parsed = parseSpec(source);
+  const formatName = parsed.format.toUpperCase();
+  if (!parsed.ok) {
     return {
       status: "invalid",
-      label: "Invalid JSON",
-      message:
-        parseError instanceof SyntaxError
-          ? parseError.message
-          : "Check the JSON syntax and try again.",
+      format: parsed.format,
+      label: `Invalid ${formatName}`,
+      message: parsed.line
+        ? `Line ${parsed.line}: ${parsed.message}`
+        : parsed.message,
+      errorLine: parsed.line,
     };
   }
-}
 
-function textMetrics(value: string) {
+  const document = parsed.value;
+  const invalid = (label: string, message: string): Assessment => ({
+    status: "invalid",
+    format: parsed.format,
+    label,
+    message,
+  });
+
+  if (!isRecord(document)) {
+    return invalid(
+      "Object required",
+      "The top level of the document must be an object.",
+    );
+  }
+  if (typeof document.openapi === "string") {
+    return invalid(
+      "Already OpenAPI 3",
+      `This document is already OpenAPI ${document.openapi}. Paste a Swagger 2.0 spec instead.`,
+    );
+  }
+  if (document.swagger !== "2.0") {
+    return invalid(
+      "Swagger 2.0 required",
+      'Expected a document with swagger: "2.0".',
+    );
+  }
+  if (!isRecord(document.info)) {
+    return invalid("Missing info", 'Add the required top-level "info" object.');
+  }
+  if (!isRecord(document.paths)) {
+    return invalid(
+      "Missing paths",
+      'Add the required top-level "paths" object.',
+    );
+  }
+
   return {
-    characters: value.length,
-    lines: value ? value.split("\n").length : 0,
+    status: "valid",
+    format: parsed.format,
+    label: `Swagger 2.0 · ${formatName}`,
+    message: "Ready to convert locally.",
+    document,
   };
 }
 
+function lineCount(value: string) {
+  return value ? value.split("\n").length : 0;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function initialConversion() {
+  const result = assess(SAMPLES[0].source);
+  return result.document ? convertSwagger(result.document) : null;
+}
+
+const HERO_BEFORE = `swagger: "2.0"
+host: api.example.com
+basePath: /v1
+schemes: [https]
+consumes: [application/json]
+definitions:
+  Order:
+    $ref: "#/definitions/NewOrder"`;
+
+const HERO_AFTER = `openapi: 3.0.1
+servers:
+- url: https://api.example.com/v1
+components:
+  schemas:
+    Order:
+      $ref: "#/components/schemas/NewOrder"`;
+
+const MAPPINGS = [
+  ["host + basePath + schemes", "servers[].url"],
+  ["definitions", "components.schemas"],
+  ["in: body", "requestBody.content"],
+  ["in: formData", "requestBody (form / multipart)"],
+  ["consumes / produces", "content media types"],
+  ["type: file", "type: string, format: binary"],
+  ["collectionFormat", "style + explode"],
+  ["securityDefinitions", "components.securitySchemes"],
+  ["type: basic", "type: http, scheme: basic"],
+  ["flow: accessCode", "flows.authorizationCode"],
+  ["parameters / responses", "components.*"],
+  ["#/definitions/…", "#/components/schemas/…"],
+] as const;
+
 export default function Home() {
-  const [input, setInput] = useState(SAMPLE_TEXT);
-  const [output, setOutput] = useState(initialOutput);
+  const [input, setInput] = useState(SAMPLES[0].source);
+  const [sampleId, setSampleId] = useState(SAMPLES[0].id);
+  const [converted, setConverted] = useState<JsonRecord | null>(
+    initialConversion,
+  );
+  const [lastConvertedInput, setLastConvertedInput] = useState(
+    SAMPLES[0].source,
+  );
+  const [outputFormat, setOutputFormat] = useState<SpecFormat>("json");
+  const [outputPinned, setOutputPinned] = useState(false);
+  const [live, setLive] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(
+    "Sample converted. Paste your own Swagger 2.0 spec to begin.",
+  );
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [lastConvertedInput, setLastConvertedInput] = useState(SAMPLE_TEXT);
-  const [notice, setNotice] = useState(
-    "Sample converted. Replace it with your Swagger document.",
-  );
+  const [pulse, setPulse] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const inputAssessment = useMemo(() => assessInput(input), [input]);
-  const inputMetrics = useMemo(() => textMetrics(input), [input]);
-  const outputMetrics = useMemo(() => textMetrics(output), [output]);
+  const deferredInput = useDeferredValue(input);
+  const assessment = useMemo(() => assess(deferredInput), [deferredInput]);
+  const output = useMemo(
+    () => (converted ? serializeSpec(converted, outputFormat) : ""),
+    [converted, outputFormat],
+  );
   const outputIsStale = input !== lastConvertedInput;
 
   const stats = useMemo(() => {
-    try {
-      const parsed = JSON.parse(output) as JsonRecord;
-      const paths = isRecord(parsed.paths) ? parsed.paths : {};
-      const schemas =
-        isRecord(parsed.components) && isRecord(parsed.components.schemas)
-          ? parsed.components.schemas
-          : {};
-      return {
-        endpoints: Object.keys(paths).length,
-        operations: countOperations(paths),
-        schemas: Object.keys(schemas).length,
-      };
-    } catch {
-      return { endpoints: 0, operations: 0, schemas: 0 };
-    }
-  }, [output]);
+    const paths = isRecord(converted?.paths) ? converted.paths : {};
+    const components = isRecord(converted?.components)
+      ? converted.components
+      : {};
+    const size = (value: unknown) =>
+      isRecord(value) ? Object.keys(value).length : 0;
+    return [
+      { label: "paths", value: Object.keys(paths).length },
+      { label: "operations", value: countOperations(paths) },
+      { label: "schemas", value: size(components.schemas) },
+      { label: "security", value: size(components.securitySchemes) },
+    ];
+  }, [converted]);
 
-  function runConversion(source = input) {
-    try {
-      const parsed: unknown = JSON.parse(source);
-      if (!isRecord(parsed)) {
-        throw new Error("The top level of your Swagger file must be an object.");
+  const runConversion = useCallback(
+    (source: string, quiet = false) => {
+      const result = assess(source);
+      if (!result.document) {
+        if (!quiet) setError(result.message);
+        return;
       }
-      const converted = convertSwagger(parsed);
-      setOutput(JSON.stringify(converted, null, 2));
-      setLastConvertedInput(source);
-      setError("");
-      setNotice("Conversion complete. Review the result before production use.");
-    } catch (conversionError) {
-      setError(
-        conversionError instanceof Error
-          ? conversionError.message
-          : "We could not read this Swagger document.",
-      );
-    }
+      try {
+        const started = performance.now();
+        const next = convertSwagger(result.document);
+        const elapsed = performance.now() - started;
+        setConverted(next);
+        setLastConvertedInput(source);
+        setError("");
+        if (!outputPinned) setOutputFormat(result.format);
+        setNotice(
+          `Converted in ${elapsed < 1 ? "<1" : Math.round(elapsed)} ms, entirely in this tab.`,
+        );
+        setPulse((value) => value + 1);
+      } catch (conversionError) {
+        setError(
+          conversionError instanceof Error
+            ? conversionError.message
+            : "We could not convert this Swagger document.",
+        );
+      }
+    },
+    [outputPinned],
+  );
+
+  // Live mode converts shortly after typing stops.
+  useEffect(() => {
+    if (!live || deferredInput !== input) return;
+    if (input === lastConvertedInput || input.length > LIVE_LIMIT) return;
+    if (assessment.status !== "valid") return;
+    const timer = window.setTimeout(() => runConversion(input, true), 350);
+    return () => window.clearTimeout(timer);
+  }, [
+    live,
+    input,
+    deferredInput,
+    lastConvertedInput,
+    assessment.status,
+    runConversion,
+  ]);
+
+  function updateInput(value: string) {
+    setInput(value);
+    setError("");
+    setCopied(false);
+  }
+
+  function loadSample(id: string) {
+    const sample = SAMPLES.find((item) => item.id === id);
+    if (!sample) return;
+    setSampleId(id);
+    updateInput(sample.source);
+    runConversion(sample.source);
   }
 
   function loadFile(file?: File) {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".json")) {
-      setError("Please choose a JSON file.");
+    if (!/\.(json|ya?ml)$/i.test(file.name)) {
+      setError("Choose a .json, .yaml or .yml file.");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_FILE_BYTES) {
       setError("That file is over 10 MB. Choose a smaller Swagger document.");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const content = typeof reader.result === "string" ? reader.result : "";
-      setInput(content);
+      setSampleId("");
+      updateInput(content);
       runConversion(content);
+      setNotice(`Loaded ${file.name} (${formatBytes(file.size)}).`);
     };
     reader.onerror = () => setError("We could not read that file.");
     reader.readAsText(file);
@@ -893,26 +295,23 @@ export default function Home() {
     loadFile(event.dataTransfer.files[0]);
   }
 
-  function handleDropzoneKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      fileInputRef.current?.click();
-    }
-  }
-
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     loadFile(event.target.files?.[0]);
     event.target.value = "";
   }
 
   function formatInput() {
-    try {
-      const parsed = JSON.parse(input);
-      setInput(JSON.stringify(parsed, null, 2));
-      setError("");
-    } catch {
-      setError("Fix the JSON syntax before formatting.");
+    const parsed = parseSpec(input);
+    if (!parsed.ok) {
+      setError(`Fix the ${parsed.format.toUpperCase()} syntax before formatting.`);
+      return;
     }
+    updateInput(serializeSpec(parsed.value, parsed.format));
+  }
+
+  function chooseOutputFormat(format: SpecFormat) {
+    setOutputFormat(format);
+    setOutputPinned(true);
   }
 
   async function copyOutput() {
@@ -921,7 +320,7 @@ export default function Home() {
       await navigator.clipboard.writeText(output);
       setCopied(true);
       setError("");
-      setNotice("OpenAPI JSON copied to your clipboard.");
+      setNotice(`OpenAPI ${outputFormat.toUpperCase()} copied to your clipboard.`);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setError("Copy failed. Select the output and copy it manually.");
@@ -930,352 +329,474 @@ export default function Home() {
 
   function downloadOutput() {
     if (!output) return;
-    const blob = new Blob([output], { type: "application/json" });
+    const blob = new Blob([output], {
+      type: outputFormat === "json" ? "application/json" : "application/yaml",
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "openapi.json";
+    anchor.download = `openapi.${outputFormat === "json" ? "json" : "yaml"}`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
 
+  const inputFileName = `swagger.${assessment.format === "json" ? "json" : "yaml"}`;
+  const outputFileName = `openapi.${outputFormat === "json" ? "json" : "yaml"}`;
+  const statusMessage =
+    error ||
+    (assessment.status === "invalid" ? assessment.message : notice);
+  const hasProblem = Boolean(error) || assessment.status === "invalid";
+
   return (
-    <main className="site-frame">
+    <div className="page">
+      <div className="backdrop" aria-hidden="true">
+        <div className="aurora aurora-a" />
+        <div className="aurora aurora-b" />
+        <div className="aurora aurora-c" />
+        <div className="grid-lines" />
+      </div>
+
       <header className="site-header">
         <div className="shell header-inner">
           <a className="brand" href="#top" aria-label="SpecLift home">
-            <span className="brand-glyph" aria-hidden="true">&gt;_</span>
+            <LogoMark className="brand-mark" />
             <span>SpecLift</span>
           </a>
           <nav className="nav-links" aria-label="Main navigation">
             <a href="#converter">Converter</a>
-            <a href="#workflow">How it works</a>
-            <span className="local-pill">
-              <span className="pulse-dot" aria-hidden="true" />
-              Local only
-            </span>
+            <a href="#mapping">What changes</a>
+            <a href="#privacy">Privacy</a>
+            <a
+              className="nav-icon"
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="SpecLift on GitHub"
+            >
+              <GitHubIcon />
+            </a>
           </nav>
         </div>
       </header>
 
-      <section className="hero shell" id="top" aria-labelledby="hero-title">
-        <div className="hero-copy-block">
-          <div className="eyebrow">
-            <span aria-hidden="true">●</span>
-            Swagger 2.0 → OpenAPI 3.0.3
+      <main>
+        <section className="hero shell" id="top" aria-labelledby="hero-title">
+          <div className="hero-copy-block">
+            <a className="eyebrow" href="#parity">
+              <span className="eyebrow-dot" aria-hidden="true" />
+              Matches Swagger&apos;s official converter
+              <ArrowRightIcon />
+            </a>
+            <h1 id="hero-title">
+              Lift your API spec to{" "}
+              <span className="gradient-text">OpenAPI&nbsp;3</span>
+            </h1>
+            <p className="hero-copy">
+              Drop in a Swagger 2.0 spec as JSON or YAML and get the same
+              OpenAPI 3 output Swagger&apos;s converter produces. Every step
+              runs in your browser. Nothing leaves this browser.
+            </p>
+            <div className="hero-actions">
+              <a className="primary-button" href="#converter">
+                Start converting <ArrowDownIcon />
+              </a>
+              <a className="secondary-button" href="#mapping">
+                See what changes
+              </a>
+            </div>
+            <ul className="hero-facts" aria-label="Highlights">
+              <li>
+                <LockIcon /> 100% client-side
+              </li>
+              <li>
+                <WandIcon /> JSON &amp; YAML
+              </li>
+              <li>
+                <ShieldIcon /> No sign-up, no tracking
+              </li>
+            </ul>
           </div>
-          <h1 id="hero-title">
-            Modernize your API spec.
-            <span> Keep it local.</span>
-          </h1>
-          <p className="hero-copy">
-            A focused, browser-only workspace for converting Swagger JSON.
-            No uploads, accounts, telemetry, or hidden network calls.
-          </p>
-        </div>
-        <div className="hero-terminal" aria-label="Privacy summary">
-          <div className="terminal-command">
-            <span>$</span> speclift --privacy
-          </div>
-          <dl>
-            <div>
-              <dt>processing</dt>
-              <dd>in browser</dd>
-            </div>
-            <div>
-              <dt>retention</dt>
-              <dd>none</dd>
-            </div>
-            <div>
-              <dt>network</dt>
-              <dd>offline-ready</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
 
-      <section
-        className="workspace-shell shell"
-        id="converter"
-        aria-label="API specification converter"
-      >
-        <div className="workspace-topbar">
-          <div className="window-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <span className="workspace-title">speclift / converter</span>
-          <div className="privacy-status">
-            <span className="lock-icon" aria-hidden="true">◇</span>
-            <span>Nothing leaves this browser</span>
-          </div>
-        </div>
-
-        <div className="workspace">
-          <div
-            className={`editor-panel input-panel ${isDragging ? "is-dragging" : ""}`}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-                setIsDragging(false);
-              }
-            }}
-            onDrop={handleDrop}
-          >
-            <div className="panel-heading">
-              <div className="panel-title">
-                <span className="panel-kicker">INPUT</span>
-                <h2>swagger.json</h2>
+          <div className="hero-visual" aria-hidden="true">
+            <div className="spec-card spec-before">
+              <div className="spec-card-bar">
+                <span className="dot" />
+                <span className="dot" />
+                <span className="dot" />
+                <span className="spec-card-name">swagger.yaml</span>
+                <span className="version-chip is-old">2.0</span>
               </div>
-              <div className="panel-actions">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Open file
-                </button>
-                <button type="button" className="ghost-button" onClick={formatInput}>
-                  Format
-                </button>
-                <button
-                  type="button"
-                  className="ghost-button danger-button"
-                  onClick={() => {
-                    setInput("");
-                    setOutput("");
-                    setLastConvertedInput("");
-                    setError("");
-                    setNotice("Input and output cleared.");
+              <pre>
+                <code
+                  dangerouslySetInnerHTML={{
+                    __html: highlight(HERO_BEFORE, "yaml"),
                   }}
-                  disabled={!input && !output}
-                >
-                  Clear
-                </button>
-              </div>
+                />
+              </pre>
             </div>
+            <div className="lift-beam">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="spec-card spec-after">
+              <div className="spec-card-bar">
+                <span className="dot" />
+                <span className="dot" />
+                <span className="dot" />
+                <span className="spec-card-name">openapi.yaml</span>
+                <span className="version-chip">3.0</span>
+              </div>
+              <pre>
+                <code
+                  dangerouslySetInnerHTML={{
+                    __html: highlight(HERO_AFTER, "yaml"),
+                  }}
+                />
+              </pre>
+            </div>
+          </div>
+        </section>
 
-            <label className="sr-only" htmlFor="swagger-input">
-              Swagger 2 JSON input
-            </label>
-            <textarea
-              id="swagger-input"
-              spellCheck={false}
-              wrap="off"
-              value={input}
-              placeholder={'{\n  "swagger": "2.0",\n  "info": { ... },\n  "paths": { ... }\n}'}
-              onChange={(event) => {
-                setInput(event.target.value);
-                setError("");
-                setCopied(false);
+        <section
+          className="workspace-shell shell"
+          id="converter"
+          aria-label="API specification converter"
+        >
+          <div className="workspace-topbar">
+            <div className="window-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="sample-picker" role="group" aria-label="Load a sample">
+              <span className="sample-label">Samples</span>
+              {SAMPLES.map((sample) => (
+                <button
+                  key={sample.id}
+                  type="button"
+                  className={`chip ${sampleId === sample.id ? "is-active" : ""}`}
+                  aria-pressed={sampleId === sample.id}
+                  onClick={() => loadSample(sample.id)}
+                >
+                  {sample.label}
+                </button>
+              ))}
+            </div>
+            <div className="privacy-status">
+              <LockIcon />
+              <span>Nothing leaves this browser</span>
+            </div>
+          </div>
+
+          <div className="workspace">
+            <div
+              className={`editor-panel ${isDragging ? "is-dragging" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
               }}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault();
-                  runConversion();
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                  setIsDragging(false);
                 }
               }}
-              aria-describedby="input-status conversion-message"
-              aria-invalid={inputAssessment.status === "invalid"}
-            />
-
-            <div
-              className="drop-row"
-              role="button"
-              tabIndex={0}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={handleDropzoneKeyDown}
-              aria-label="Choose a Swagger JSON file, or drop one anywhere in the input panel"
+              onDrop={handleDrop}
             >
+              <div className="panel-heading">
+                <div className="panel-title">
+                  <span className="panel-kicker">Swagger 2.0</span>
+                  <h2>{inputFileName}</h2>
+                </div>
+                <div className="panel-actions">
+                  <button
+                    type="button"
+                    className="tool-button"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <UploadIcon /> <span>Open</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="tool-button"
+                    onClick={formatInput}
+                    disabled={!input.trim()}
+                  >
+                    <WandIcon /> <span>Format</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="tool-button is-danger"
+                    onClick={() => {
+                      setSampleId("");
+                      updateInput("");
+                      setConverted(null);
+                      setLastConvertedInput("");
+                      setNotice("Input and output cleared.");
+                    }}
+                    disabled={!input && !converted}
+                    aria-label="Clear input and output"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </div>
+
+              <label className="sr-only" htmlFor="swagger-input">
+                Swagger 2.0 JSON or YAML input
+              </label>
+              <CodeEditor
+                id="swagger-input"
+                value={input}
+                format={assessment.format}
+                onChange={(value) => {
+                  setSampleId("");
+                  updateInput(value);
+                }}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    event.preventDefault();
+                    runConversion(input);
+                  }
+                }}
+                placeholder={'swagger: "2.0"\ninfo:\n  title: My API\n  version: "1.0"\npaths: {}'}
+                describedBy="input-status conversion-message"
+                invalid={assessment.status === "invalid"}
+                errorLine={assessment.errorLine}
+              />
+
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.yaml,.yml,application/json,application/yaml,text/yaml"
                 onChange={handleFileChange}
                 hidden
               />
-              <span className="upload-icon" aria-hidden="true">+</span>
-              <span>
-                <strong>Drop .json anywhere in this pane</strong>
-                <small>or choose a file · 10 MB maximum</small>
-              </span>
-            </div>
 
-            <div className="panel-footer">
-              <span
-                className={`input-state state-${inputAssessment.status}`}
-                id="input-status"
-              >
-                <span aria-hidden="true">
-                  {inputAssessment.status === "valid"
-                    ? "●"
-                    : inputAssessment.status === "invalid"
-                      ? "×"
-                      : "○"}
-                </span>
-                {inputAssessment.label}
-              </span>
-              <span className="editor-metrics">
-                Ln {inputMetrics.lines} · {inputMetrics.characters.toLocaleString()} chars
-              </span>
-            </div>
-          </div>
-
-          <div className="convert-rail" aria-hidden="true">
-            <span>→</span>
-          </div>
-
-          <div className="editor-panel output-panel">
-            <div className="panel-heading">
-              <div className="panel-title">
-                <span className="panel-kicker">OUTPUT</span>
-                <h2>openapi.json</h2>
+              <div className="drop-overlay" aria-hidden="true">
+                <UploadIcon />
+                <strong>Drop to load</strong>
+                <span>JSON or YAML · up to 10 MB</span>
               </div>
-              <div className="panel-actions">
+
+              <div className="panel-footer">
                 <span
-                  className={`sync-chip ${outputIsStale ? "is-stale" : ""}`}
+                  className={`input-state state-${assessment.status}`}
+                  id="input-status"
                 >
-                  {outputIsStale ? "Not converted" : "Up to date"}
+                  <span className="state-dot" aria-hidden="true" />
+                  {assessment.label}
                 </span>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={copyOutput}
-                  disabled={!output}
-                  aria-label="Copy converted OpenAPI JSON"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-                <button
-                  type="button"
-                  className="download-button"
-                  onClick={downloadOutput}
-                  disabled={!output}
-                >
-                  <span aria-hidden="true">↓</span> Download
-                </button>
+                <span className="editor-metrics">
+                  {lineCount(input).toLocaleString()} lines ·{" "}
+                  {formatBytes(input.length)}
+                </span>
               </div>
             </div>
 
-            <pre
-              className="output-code"
-              tabIndex={0}
-              aria-label="Converted OpenAPI JSON"
+            <div className="convert-rail">
+              <button
+                type="button"
+                className={`lift-button ${outputIsStale && assessment.status === "valid" ? "is-ready" : ""}`}
+                onClick={() => runConversion(input)}
+                disabled={assessment.status !== "valid"}
+                aria-label="Convert to OpenAPI 3"
+                title="Convert (Ctrl + Enter)"
+              >
+                <ArrowRightIcon />
+              </button>
+            </div>
+
+            <div
+              className="editor-panel output-panel"
+              data-pulse={pulse === 0 ? undefined : pulse % 2 === 0 ? "a" : "b"}
+            >
+              <div className="panel-heading">
+                <div className="panel-title">
+                  <span className="panel-kicker is-new">OpenAPI 3.0</span>
+                  <h2>{outputFileName}</h2>
+                </div>
+                <div className="panel-actions">
+                  <div className="segmented" role="group" aria-label="Output format">
+                    {(["json", "yaml"] as const).map((format) => (
+                      <button
+                        key={format}
+                        type="button"
+                        aria-pressed={outputFormat === format}
+                        className={outputFormat === format ? "is-active" : ""}
+                        onClick={() => chooseOutputFormat(format)}
+                      >
+                        {format.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="tool-button"
+                    onClick={copyOutput}
+                    disabled={!output}
+                    aria-label={`Copy converted OpenAPI ${outputFormat.toUpperCase()}`}
+                  >
+                    {copied ? <CheckIcon /> : <CopyIcon />}
+                    <span>{copied ? "Copied" : "Copy"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="tool-button is-accent"
+                    onClick={downloadOutput}
+                    disabled={!output}
+                  >
+                    <DownloadIcon /> <span>Download</span>
+                  </button>
+                </div>
+              </div>
+
+              <CodeView
+                value={output}
+                format={outputFormat}
+                label={`Converted OpenAPI ${outputFormat.toUpperCase()}`}
+                placeholder="// Your OpenAPI 3 spec will appear here."
+              />
+
+              <div className="panel-footer">
+                <div className="output-stats" aria-label="Output summary">
+                  {stats.map((stat) => (
+                    <span key={stat.label}>
+                      <b>{stat.value}</b> {stat.label}
+                    </span>
+                  ))}
+                </div>
+                <span className={`sync-chip ${outputIsStale ? "is-stale" : ""}`}>
+                  {outputIsStale ? "Out of date" : "Up to date"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="conversion-bar">
+            <div
+              className={`conversion-message ${hasProblem ? "has-error" : ""}`}
+              id="conversion-message"
+              role="status"
               aria-live="polite"
             >
-              <code>
-                {output ||
-                  "// Converted OpenAPI 3.0.3 JSON will appear here."}
-              </code>
-            </pre>
-
-            <div className="panel-footer output-footer">
-              <div className="output-stats" aria-label="Output summary">
-                <span><b>{stats.endpoints}</b> paths</span>
-                <span><b>{stats.operations}</b> operations</span>
-                <span><b>{stats.schemas}</b> schemas</span>
-              </div>
-              <span className="editor-metrics">Ln {outputMetrics.lines}</span>
+              <span className="message-symbol" aria-hidden="true">
+                {hasProblem ? "!" : <CheckIcon />}
+              </span>
+              <span>{statusMessage}</span>
+            </div>
+            <div className="conversion-actions">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={live}
+                  onChange={(event) => setLive(event.target.checked)}
+                />
+                <span className="toggle-track" aria-hidden="true" />
+                Live convert
+              </label>
+              <span className="shortcut-hint" aria-hidden="true">
+                <kbd>Ctrl</kbd>
+                <kbd>Enter</kbd>
+              </span>
+              <button
+                type="button"
+                className="convert-button"
+                onClick={() => runConversion(input)}
+                disabled={assessment.status !== "valid"}
+              >
+                <span>
+                  Convert<span className="long-label"> to OpenAPI 3</span>
+                </span>
+                <ArrowRightIcon />
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="conversion-bar">
-          <div
-            className={`conversion-message ${error ? "has-error" : ""}`}
-            id="conversion-message"
-            role="status"
-            aria-live="polite"
-          >
-            <span className="message-symbol" aria-hidden="true">
-              {error ? "!" : "i"}
-            </span>
-            <span>
-              <strong>{error ? "Could not convert" : "Local session"}</strong>
-              {error || (inputAssessment.status === "invalid"
-                ? inputAssessment.message
-                : notice)}
-            </span>
+        <section className="mapping-section shell" id="mapping">
+          <div className="section-intro">
+            <span className="section-label">What changes</span>
+            <h2>
+              Every Swagger 2.0 concept, <span className="gradient-text">remapped</span>.
+            </h2>
+            <p>
+              SpecLift follows the same rules as Swagger&apos;s converter, so
+              tooling that expects its output keeps working.
+            </p>
           </div>
-          <div className="conversion-actions">
-            <span className="shortcut-hint">
-              <kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd>
-            </span>
-            <button
-              type="button"
-              className="convert-button"
-              onClick={() => runConversion()}
-              disabled={inputAssessment.status !== "valid"}
-            >
-              <span>Convert to OpenAPI 3</span>
-              <span className="button-arrow" aria-hidden="true">→</span>
-            </button>
+          <ul className="mapping-grid">
+            {MAPPINGS.map(([from, to]) => (
+              <li key={from}>
+                <code className="from">{from}</code>
+                <ArrowRightIcon className="mapping-arrow" />
+                <code className="to">{to}</code>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="trust-section shell" id="privacy">
+          <div className="section-intro">
+            <span className="section-label">Private by design</span>
+            <h2>Your API never leaves the tab.</h2>
+            <p>
+              Internal specs often describe systems nobody outside your team
+              should see. SpecLift has no backend to send them to.
+            </p>
           </div>
-        </div>
-      </section>
-
-      <section className="support-strip shell" aria-label="Converter guarantees">
-        <span><b>01</b> Browser-only processing</span>
-        <span><b>02</b> Zero data retention</span>
-        <span><b>03</b> No telemetry</span>
-        <button
-          type="button"
-          className="sample-button"
-          onClick={() => {
-            setInput(SAMPLE_TEXT);
-            runConversion(SAMPLE_TEXT);
-          }}
-        >
-          Reset to sample <span aria-hidden="true">↗</span>
-        </button>
-      </section>
-
-      <section className="workflow-section shell" id="workflow">
-        <div className="section-intro">
-          <span className="section-label">HOW IT WORKS</span>
-          <h2>Legacy in. Production-ready foundation out.</h2>
-          <p>
-            SpecLift remaps the common Swagger 2.0 surface while keeping the
-            workflow small enough to understand at a glance.
-          </p>
-        </div>
-        <ol className="workflow-grid">
-          <li>
-            <span className="step-number">01</span>
-            <div>
-              <h3>Paste or drop</h3>
-              <p>Add Swagger 2.0 JSON directly to the scrollable input editor.</p>
-            </div>
-          </li>
-          <li>
-            <span className="step-number">02</span>
-            <div>
-              <h3>Convert locally</h3>
-              <p>Servers, bodies, responses, references, and components are remapped.</p>
-            </div>
-          </li>
-          <li>
-            <span className="step-number">03</span>
-            <div>
-              <h3>Review and export</h3>
-              <p>Inspect the result, then copy or download the OpenAPI JSON.</p>
-            </div>
-          </li>
-        </ol>
-      </section>
+          <div className="trust-grid">
+            <article className="trust-card">
+              <span className="trust-icon">
+                <CpuIcon />
+              </span>
+              <h3>Runs in your browser</h3>
+              <p>
+                Files are read with the FileReader API, converted in memory
+                and downloaded from a local Blob.
+              </p>
+            </article>
+            <article className="trust-card">
+              <span className="trust-icon">
+                <EyeOffIcon />
+              </span>
+              <h3>No tracking, no storage</h3>
+              <p>
+                No accounts, analytics, telemetry or third-party fonts. Close
+                the tab and nothing remains.
+              </p>
+            </article>
+            <article className="trust-card" id="parity">
+              <span className="trust-icon">
+                <ScaleIcon />
+              </span>
+              <h3>Same output as Swagger</h3>
+              <p>
+                Output is identical to converter.swagger.io, key order
+                included, across 99 real-world APIs and 54 edge-case
+                fixtures that run as tests.
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
 
       <footer className="site-footer">
         <div className="shell footer-inner">
-          <span className="footer-brand"><span aria-hidden="true">&gt;_</span> SpecLift</span>
-          <p>Private, practical API modernization.</p>
-          <a href="#top">Back to top ↑</a>
+          <span className="brand footer-brand">
+            <LogoMark className="brand-mark" />
+            SpecLift
+          </span>
+          <p>Private Swagger 2.0 → OpenAPI 3 conversion. MIT licensed.</p>
+          <div className="footer-links">
+            <a href={REPO_URL} target="_blank" rel="noreferrer">
+              <GitHubIcon /> Source
+            </a>
+            <a href="#top">Back to top ↑</a>
+          </div>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

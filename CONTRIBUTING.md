@@ -18,8 +18,11 @@ npm test
 npm run build:pages
 ```
 
-For converter changes, include a small Swagger 2.0 example that demonstrates
-the behavior and verify the generated OpenAPI structure.
+For converter changes, add a small Swagger 2.0 example to
+`tests/fixtures/parity` (or `tests/fixtures/parity-yaml` for YAML-specific
+behavior), fetch Swagger's reference output with
+`node scripts/fetch-swagger-reference.mjs <that folder>`, and make sure
+`npm test` passes. SpecLift's output must stay identical to Swagger's.
 
 By contributing, you agree that your contributions are licensed under the MIT
 License.

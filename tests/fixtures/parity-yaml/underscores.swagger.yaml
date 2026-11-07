@@ -1,0 +1,13 @@
+swagger: "2.0"
+info:
+  title: probe
+  version: "1"
+paths:
+  /a:
+    get:
+      responses:
+        "200":
+          description: ok
+          examples:
+            application/json:
+              v: 1_000

@@ -1,0 +1,134 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Security",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "basicAuth": []
+    },
+    {
+      "implicit": [
+        "read"
+      ]
+    }
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "security": [
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "apiKeyQuery": [],
+            "accessCode": [
+              "admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/b": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "security": []
+      }
+    },
+    "/c": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "description": "Basic",
+        "scheme": "basic"
+      },
+      "apiKeyHeader": {
+        "type": "apiKey",
+        "description": "Header key",
+        "name": "X-API-Key",
+        "in": "header"
+      },
+      "apiKeyQuery": {
+        "type": "apiKey",
+        "name": "api_key",
+        "in": "query",
+        "x-sec-ext": 1
+      },
+      "implicit": {
+        "type": "oauth2",
+        "description": "Implicit",
+        "flows": {
+          "implicit": {
+            "authorizationUrl": "https://auth.example.com/authorize",
+            "scopes": {
+              "read": "Read",
+              "write": "Write"
+            }
+          }
+        }
+      },
+      "password": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "tokenUrl": "https://auth.example.com/token",
+            "scopes": {
+              "read": "Read"
+            }
+          }
+        }
+      },
+      "application": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.example.com/token",
+            "scopes": {}
+          }
+        }
+      },
+      "accessCode": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://auth.example.com/authorize",
+            "tokenUrl": "https://auth.example.com/token",
+            "scopes": {
+              "admin": "Admin"
+            }
+          }
+        },
+        "x-oauth-ext": "o"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

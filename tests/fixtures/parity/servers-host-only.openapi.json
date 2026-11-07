@@ -1,0 +1,15 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Host only",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "//api.example.com/"
+    }
+  ],
+  "paths": {},
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

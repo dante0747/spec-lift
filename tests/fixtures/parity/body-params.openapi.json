@@ -1,0 +1,248 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Bodies",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/inline": {
+      "post": {
+        "requestBody": {
+          "description": "The pet",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "pet"
+      }
+    },
+    "/ref": {
+      "put": {
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "body"
+      }
+    },
+    "/array": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "pets"
+      }
+    },
+    "/global": {
+      "post": {
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Global body",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "petBody"
+      }
+    },
+    "/global-override-consumes": {
+      "post": {
+        "requestBody": {
+          "description": "Global body",
+          "content": {
+            "application/vnd.pet+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "petBody"
+      }
+    },
+    "/primitive": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer",
+                "format": "int64",
+                "x-body-schema-ext": 1
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "integer",
+                "format": "int64",
+                "x-body-schema-ext": 1
+              }
+            }
+          },
+          "required": false,
+          "x-body-param-ext": "b"
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "count"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+          "format": "int32",
+          "default": 10
+        }
+      }
+    },
+    "requestBodies": {
+      "PetBody": {
+        "description": "Global body",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Pet"
+            }
+          },
+          "application/xml": {
+            "schema": {
+              "$ref": "#/components/schemas/Pet"
+            }
+          }
+        },
+        "required": true
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

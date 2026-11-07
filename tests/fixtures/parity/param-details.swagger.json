@@ -1,0 +1,157 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Param details",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/items/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string",
+          "description": "Path-level id"
+        },
+        {
+          "name": "X-Trace",
+          "in": "header",
+          "type": "string"
+        },
+        {
+          "name": "verbose",
+          "in": "query",
+          "type": "boolean"
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "verbose",
+            "in": "query",
+            "type": "boolean",
+            "description": "Overridden",
+            "default": true
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "default": "a",
+            "required": false
+          },
+          {
+            "name": "empty",
+            "in": "query",
+            "type": "string",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "ex",
+            "in": "query",
+            "type": "integer",
+            "x-example": 42
+          },
+          {
+            "name": "pat",
+            "in": "query",
+            "type": "string",
+            "pattern": "^[a-z]+$",
+            "minLength": 1,
+            "maxLength": 5
+          },
+          {
+            "name": "num",
+            "in": "query",
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 10,
+            "exclusiveMaximum": false,
+            "multipleOf": 0.5
+          },
+          {
+            "name": "arr",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "X-Ext",
+            "in": "header",
+            "type": "string",
+            "x-param-ext": "e",
+            "required": true
+          },
+          {
+            "name": "dep",
+            "in": "query",
+            "type": "string",
+            "x-deprecated": true
+          },
+          {
+            "$ref": "#/parameters/Global"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Global": {
+      "name": "global",
+      "in": "query",
+      "type": "string",
+      "description": "global param"
+    },
+    "HeaderG": {
+      "name": "X-G",
+      "in": "header",
+      "type": "string",
+      "required": true
+    },
+    "PathG": {
+      "name": "pid",
+      "in": "path",
+      "type": "integer",
+      "required": true
+    },
+    "Arr": {
+      "name": "arr",
+      "in": "query",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "collectionFormat": "multi"
+    }
+  }
+}

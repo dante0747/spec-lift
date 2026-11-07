@@ -1,0 +1,56 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Security edge",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "security": [
+          {
+            "noflow": [
+              "a"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "noflow": {
+        "type": "oauth2",
+        "flows": {}
+      },
+      "numericScopes": {
+        "type": "oauth2",
+        "flows": {
+          "implicit": {
+            "authorizationUrl": "https://a",
+            "scopes": {
+              "n": "1"
+            }
+          }
+        }
+      },
+      "basicExt": {
+        "type": "http",
+        "scheme": "basic",
+        "x-a": 1
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

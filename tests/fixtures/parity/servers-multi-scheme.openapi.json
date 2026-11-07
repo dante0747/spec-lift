@@ -1,0 +1,43 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Schemes",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com:8443/api/v1/"
+    },
+    {
+      "url": "http://api.example.com:8443/api/v1/"
+    },
+    {
+      "url": "ws://api.example.com:8443/api/v1/"
+    },
+    {
+      "url": "wss://api.example.com:8443/api/v1/"
+    }
+  ],
+  "paths": {
+    "/a": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

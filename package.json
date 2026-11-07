@@ -11,10 +11,15 @@
     "build": "vinext build",
     "build:pages": "node scripts/build-pages.mjs",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/converter-refs.test.mjs tests/converter.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/converter-refs.test.mjs tests/converter.test.mjs tests/parity.test.mjs tests/parity-yaml.test.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "parity:check": "node scripts/parity-check.mjs tests/fixtures/parity"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "js-yaml": "4.3.2",
     "next": "16.2.12",
     "react": "19.2.6",
     "react-dom": "19.2.6"
@@ -22,6 +27,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@tailwindcss/postcss": "4.2.1",
+    "@types/js-yaml": "4.0.9",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

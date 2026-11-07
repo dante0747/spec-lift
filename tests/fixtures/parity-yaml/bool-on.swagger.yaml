@@ -1,0 +1,15 @@
+swagger: "2.0"
+info:
+  title: probe
+  version: "1"
+paths:
+  /a:
+    get:
+      parameters:
+        - name: p
+          in: query
+          type: boolean
+          default: on
+      responses:
+        "200":
+          description: ok

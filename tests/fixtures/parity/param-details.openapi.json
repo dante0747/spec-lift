@@ -1,0 +1,226 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Param details",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/items/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Path-level id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Trace",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "description": "Overridden",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "a",
+              "enum": [
+                "a",
+                "b"
+              ]
+            }
+          },
+          {
+            "name": "empty",
+            "in": "query",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ex",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 42
+          },
+          {
+            "name": "pat",
+            "in": "query",
+            "schema": {
+              "maxLength": 5,
+              "minLength": 1,
+              "pattern": "^[a-z]+$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "num",
+            "in": "query",
+            "schema": {
+              "multipleOf": 0.5,
+              "maximum": 10,
+              "exclusiveMaximum": false,
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "arr",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "maxItems": 3,
+              "minItems": 1,
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Ext",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-param-ext": "e"
+            },
+            "x-param-ext": "e"
+          },
+          {
+            "name": "dep",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "x-deprecated": true
+            },
+            "x-deprecated": true
+          },
+          {
+            "name": "global",
+            "in": "query",
+            "description": "global param",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Path-level id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Trace",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "deleted",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Global": {
+        "name": "global",
+        "in": "query",
+        "description": "global param",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "HeaderG": {
+        "name": "X-G",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PathG": {
+        "name": "pid",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "Arr": {
+        "name": "arr",
+        "in": "query",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

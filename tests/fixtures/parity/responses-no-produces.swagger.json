@@ -1,0 +1,35 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "No produces",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/a": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "x",
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "text/plain": "hello"
+            }
+          },
+          "500": {
+            "$ref": "#/responses/Err"
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "Err": {
+      "description": "err",
+      "schema": {
+        "type": "string"
+      }
+    }
+  }
+}

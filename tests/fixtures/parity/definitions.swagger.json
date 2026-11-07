@@ -1,0 +1,188 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Definitions",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "definitions": {
+    "Base": {
+      "type": "object",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "x-model-ext": 1
+    },
+    "Cat": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lives": {
+              "type": "integer",
+              "default": 9
+            }
+          }
+        }
+      ],
+      "description": "A cat"
+    },
+    "Nullable": {
+      "type": "object",
+      "x-nullable": true,
+      "properties": {
+        "maybe": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "notNull": {
+          "type": "string",
+          "x-nullable": false
+        }
+      }
+    },
+    "Map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "MapRef": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Cat"
+      }
+    },
+    "MapBool": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "WithExample": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string",
+          "example": "x"
+        }
+      },
+      "example": {
+        "a": "x"
+      }
+    },
+    "Xml": {
+      "type": "object",
+      "xml": {
+        "name": "xmlThing",
+        "namespace": "http://example.com",
+        "prefix": "ex",
+        "wrapped": false
+      },
+      "properties": {
+        "id": {
+          "type": "integer",
+          "xml": {
+            "attribute": true
+          }
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "xml": {
+            "wrapped": true,
+            "name": "items"
+          }
+        }
+      }
+    },
+    "Enum": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b",
+        "c"
+      ],
+      "default": "a",
+      "title": "Enum title"
+    },
+    "FileProp": {
+      "type": "object",
+      "properties": {
+        "f": {
+          "type": "file"
+        }
+      }
+    },
+    "Constraints": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 3,
+      "properties": {
+        "n": {
+          "type": "number",
+          "minimum": 1,
+          "exclusiveMinimum": true,
+          "maximum": 2,
+          "multipleOf": 0.1
+        },
+        "s": {
+          "type": "string",
+          "pattern": "^x",
+          "minLength": 1,
+          "maxLength": 9
+        },
+        "a": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        }
+      }
+    },
+    "ExternalDocs": {
+      "type": "object",
+      "externalDocs": {
+        "url": "https://x.y"
+      }
+    },
+    "Ref": {
+      "$ref": "#/definitions/Base"
+    },
+    "Tuple": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "Any": {},
+    "Free": {
+      "type": "object"
+    },
+    "Name.With.Dots": {
+      "type": "string"
+    },
+    "Name With Spaces": {
+      "type": "integer"
+    }
+  }
+}

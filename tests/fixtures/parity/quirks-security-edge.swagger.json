@@ -1,0 +1,46 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Security edge",
+    "version": "1.0.0"
+  },
+  "securityDefinitions": {
+    "noflow": {
+      "type": "oauth2",
+      "scopes": {
+        "a": "A"
+      }
+    },
+    "numericScopes": {
+      "type": "oauth2",
+      "flow": "implicit",
+      "authorizationUrl": "https://a",
+      "scopes": {
+        "n": 1
+      }
+    },
+    "basicExt": {
+      "type": "basic",
+      "x-a": 1,
+      "x-example": 2
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "security": [
+          {
+            "noflow": [
+              "a"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  }
+}

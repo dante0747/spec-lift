@@ -1,0 +1,687 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Parameter variants",
+    "version": "1"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "paths": {
+    "/p": {
+      "post": {
+        "parameters": [
+          {
+            "name": "int_default_str",
+            "in": "query",
+            "type": "integer",
+            "default": "5"
+          },
+          {
+            "name": "int_default_bad",
+            "in": "query",
+            "type": "integer",
+            "default": "abc"
+          },
+          {
+            "name": "num_default",
+            "in": "query",
+            "type": "number",
+            "default": 1.5
+          },
+          {
+            "name": "num_default_int",
+            "in": "query",
+            "type": "number",
+            "default": 2
+          },
+          {
+            "name": "bool_default_str",
+            "in": "query",
+            "type": "boolean",
+            "default": "true"
+          },
+          {
+            "name": "bool_default_bad",
+            "in": "query",
+            "type": "boolean",
+            "default": "yes"
+          },
+          {
+            "name": "str_default_num",
+            "in": "query",
+            "type": "string",
+            "default": 7
+          },
+          {
+            "name": "arr_default",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "name": "int_enum",
+            "in": "query",
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "num_enum",
+            "in": "query",
+            "type": "number",
+            "enum": [
+              1.5,
+              2
+            ]
+          },
+          {
+            "name": "bool_enum",
+            "in": "query",
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ]
+          },
+          {
+            "name": "arr_enum",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "enum": [
+              "a"
+            ]
+          },
+          {
+            "name": "arr_items_enum",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ],
+              "default": 1
+            }
+          },
+          {
+            "name": "fmt_datetime",
+            "in": "query",
+            "type": "string",
+            "format": "date-time",
+            "default": "2020-01-02T03:04:05Z"
+          },
+          {
+            "name": "fmt_date",
+            "in": "query",
+            "type": "string",
+            "format": "date",
+            "default": "2020-01-02"
+          },
+          {
+            "name": "fmt_custom_int",
+            "in": "query",
+            "type": "integer",
+            "format": "weird"
+          },
+          {
+            "name": "unknown_type",
+            "in": "query",
+            "type": "weird"
+          },
+          {
+            "name": "no_type",
+            "in": "query"
+          },
+          {
+            "name": "file_q",
+            "in": "query",
+            "type": "file"
+          },
+          {
+            "name": "readonly",
+            "in": "query",
+            "type": "string",
+            "readOnly": true
+          },
+          {
+            "name": "desc_blank",
+            "in": "query",
+            "type": "string",
+            "description": "   "
+          },
+          {
+            "name": "required_false",
+            "in": "query",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "aev_false",
+            "in": "query",
+            "type": "string",
+            "allowEmptyValue": false
+          },
+          {
+            "name": "x_examples",
+            "in": "query",
+            "type": "string",
+            "x-examples": {
+              "a": 1
+            },
+            "x-nullable": true,
+            "x-keep": "k"
+          },
+          {
+            "name": "multipleOf_int",
+            "in": "query",
+            "type": "integer",
+            "multipleOf": 3
+          },
+          {
+            "name": "arr_unique_false",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": false
+          },
+          {
+            "name": "arr_minmax",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 9,
+            "collectionFormat": "pipes"
+          },
+          {
+            "name": "arr_items_ref",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/T"
+            }
+          },
+          {
+            "name": "arr_no_items",
+            "in": "query",
+            "type": "array"
+          },
+          {
+            "name": "pattern_arr",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^x",
+              "minLength": 2
+            }
+          },
+          {
+            "name": "cookie_p",
+            "in": "cookie",
+            "type": "string"
+          },
+          {
+            "name": "Body",
+            "in": "body",
+            "schema": {
+              "type": "string"
+            },
+            "description": "   ",
+            "x-example": "bx",
+            "examples": {
+              "application/json": {
+                "a": 1
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/form": {
+      "post": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "f_int_default",
+            "in": "formData",
+            "type": "integer",
+            "default": "5",
+            "enum": [
+              1,
+              5
+            ]
+          },
+          {
+            "name": "f_arr",
+            "in": "formData",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "default": 2
+            },
+            "minItems": 1,
+            "uniqueItems": false,
+            "default": [
+              1
+            ]
+          },
+          {
+            "name": "f_fmt",
+            "in": "formData",
+            "type": "string",
+            "format": "date-time",
+            "x-example": "2020-01-01T00:00:00Z",
+            "x-ext": 1,
+            "readOnly": true,
+            "pattern": "^2",
+            "multipleOf": 2
+          },
+          {
+            "name": "f_num",
+            "in": "formData",
+            "type": "number",
+            "format": "float",
+            "minimum": 1,
+            "exclusiveMinimum": true,
+            "maximum": 9,
+            "enum": [
+              1.5
+            ]
+          },
+          {
+            "name": "f_bool",
+            "in": "formData",
+            "type": "boolean",
+            "default": "false",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "f_custom",
+            "in": "formData",
+            "type": "string",
+            "format": "weird"
+          },
+          {
+            "name": "f_unknown",
+            "in": "formData",
+            "type": "weird",
+            "format": "x"
+          },
+          {
+            "name": "f_required_false",
+            "in": "formData",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/dup": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/Shared"
+        },
+        {
+          "name": "q",
+          "in": "query",
+          "type": "string",
+          "description": "path"
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "q",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "shared",
+            "in": "query",
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Shared"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/op-ref-dup": {
+      "get": {
+        "parameters": [
+          {
+            "name": "shared",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Shared"
+          },
+          {
+            "name": "other",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/missing-ref": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Nope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/responses/Nope"
+          }
+        }
+      }
+    },
+    "/deprecated-false": {
+      "get": {
+        "deprecated": false,
+        "summary": "",
+        "description": " ",
+        "operationId": "op",
+        "consumes": [],
+        "produces": [],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/resp-ordering": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "404": {
+            "description": "nf"
+          },
+          "default": {
+            "description": "d"
+          },
+          "2XX": {
+            "description": "range"
+          }
+        }
+      }
+    },
+    "/headers-many": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "ETag": {
+                "type": "string"
+              },
+              "Location": {
+                "type": "string"
+              },
+              "X-A": {
+                "type": "string"
+              },
+              "X-B": {
+                "type": "string"
+              },
+              "x-lower": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              },
+              "Cache-Control": {
+                "type": "string"
+              },
+              "X-Request-Id": {
+                "type": "string"
+              },
+              "Retry-After": {
+                "type": "string"
+              },
+              "Link": {
+                "type": "string"
+              },
+              "Set-Cookie": {
+                "type": "string"
+              },
+              "X-Total-Count": {
+                "type": "string"
+              },
+              "WWW-Authenticate": {
+                "type": "string"
+              },
+              "X-Rate-Limit-Remaining": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resp-schema-variants": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "obj",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "a": {
+                  "type": "integer",
+                  "default": 1
+                }
+              },
+              "example": {
+                "a": 1
+              }
+            }
+          },
+          "201": {
+            "description": "map",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/T"
+              }
+            }
+          },
+          "202": {
+            "description": "allOf",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/T"
+                }
+              ]
+            }
+          },
+          "204": {
+            "description": "file in array",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "file"
+              }
+            }
+          },
+          "205": {
+            "description": "header variants",
+            "headers": {
+              "H1": {
+                "type": "integer",
+                "default": 3,
+                "enum": [
+                  3
+                ],
+                "description": "h",
+                "x-nullable": true
+              },
+              "H2": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "description": "arr"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/form-and-body": {
+      "post": {
+        "parameters": [
+          {
+            "name": "b",
+            "in": "body",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "f",
+            "in": "formData",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/two-bodies": {
+      "post": {
+        "parameters": [
+          {
+            "name": "b1",
+            "in": "body",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "b2",
+            "in": "body",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/global-body-ref-path-level": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/BodyG"
+        }
+      ],
+      "post": {
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Shared": {
+      "name": "shared",
+      "in": "query",
+      "type": "string",
+      "description": "global"
+    },
+    "BodyG": {
+      "name": "bodyG",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/T"
+      },
+      "x-ext": 1
+    }
+  },
+  "responses": {
+    "Ok": {
+      "description": "ok",
+      "schema": {
+        "$ref": "#/definitions/T"
+      },
+      "x-ext": 1
+    }
+  },
+  "definitions": {
+    "T": {
+      "type": "object"
+    }
+  }
+}

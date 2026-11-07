@@ -1,0 +1,18 @@
+swagger: "2.0"
+info:
+  title: probe
+  version: "1"
+  description: >
+    Folded text
+    across lines.
+paths:
+  /a:
+    get:
+      parameters:
+        - name: p
+          in: query
+          type: string
+          default: x
+      responses:
+        "200":
+          description: ok

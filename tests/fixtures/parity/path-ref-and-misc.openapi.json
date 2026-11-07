@@ -1,0 +1,80 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Misc",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "//h.example.com/"
+    }
+  ],
+  "paths": {
+    "/all-methods": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "options": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/empty": {},
+    "/op-no-responses": {
+      "get": {
+        "summary": "No responses"
+      }
+    }
+  },
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

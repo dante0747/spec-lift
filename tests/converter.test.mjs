@@ -1,61 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
-import ts from "typescript";
-
-function transpile(source, fileName) {
-  return ts.transpileModule(source, {
-    fileName,
-    compilerOptions: {
-      jsx: ts.JsxEmit.ReactJSX,
-      module: ts.ModuleKind.ESNext,
-      target: ts.ScriptTarget.ES2022,
-    },
-  }).outputText;
-}
-
-function dataModule(source) {
-  return `data:text/javascript;base64,${Buffer.from(source).toString(
-    "base64",
-  )}`;
-}
-
-async function loadConverter() {
-  const [helperSource, pageSource] = await Promise.all([
-    readFile(
-      new URL("../app/converter-refs.ts", import.meta.url),
-      "utf8",
-    ),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-  ]);
-
-  const helperUrl = dataModule(
-    transpile(helperSource, "converter-refs.ts"),
-  );
-  const importStart = pageSource.indexOf(
-    "import {\n  convertParameterReference",
-  );
-  const importEnd =
-    pageSource.indexOf('} from "./converter-refs";') +
-    '} from "./converter-refs";'.length;
-  const engineStart = pageSource.indexOf("const HTTP_METHODS");
-  const engineEnd = pageSource.indexOf("function countOperations");
-
-  assert.ok(importStart >= 0 && importEnd > importStart);
-  assert.ok(engineStart >= 0 && engineEnd > engineStart);
-
-  const helperImport = pageSource
-    .slice(importStart, importEnd)
-    .replace('"./converter-refs"', `"${helperUrl}"`);
-  const engineSource = `${helperImport}\n${pageSource.slice(
-    engineStart,
-    engineEnd,
-  )}\nexport { convertSwagger };`;
-
-  return import(
-    dataModule(transpile(engineSource, "converter-engine.ts"))
-  );
-}
+import { loadConverter } from "./load-converter.mjs";
 
 const { convertSwagger } = await loadConverter();
 
@@ -127,60 +72,55 @@ const referenceFixture = {
   },
 };
 
-test("preserves reusable component references at operation level", () => {
+test("resolves reusable parameters and responses the way Swagger does", () => {
   const converted = convertSwagger(referenceFixture);
-  const queryParameter =
-    converted.paths["/items"].get.parameters[0];
-  const body = converted.paths["/items"].post.requestBody;
-  const formBody = converted.paths["/upload"].post.requestBody;
-  const response = converted.paths["/items"].get.responses["404"];
-  const overriddenResponse =
-    converted.paths["/upload"].post.responses["400"];
+  const items = converted.paths["/items"];
+  const upload = converted.paths["/upload"].post;
 
-  assert.deepEqual(queryParameter, {
-    $ref: "#/components/parameters/Limit",
+  // Swagger inlines `#/parameters` and `#/responses` refs into operations…
+  assert.deepEqual(items.get.parameters[0], {
+    name: "limit",
+    in: "query",
+    schema: { type: "integer", format: "int32" },
   });
-
-  assert.deepEqual(body, {
-    $ref: "#/components/requestBodies/Payload",
+  assert.deepEqual(items.post.requestBody, {
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/Payload" },
+      },
+    },
+    required: true,
   });
-  assert.equal(
-    converted.paths["/items"].post[
-      "x-codegen-request-body-name"
-    ],
-    "payload",
-  );
-
+  assert.equal(items.post["x-codegen-request-body-name"], "payload");
   assert.deepEqual(
-    formBody.content["multipart/form-data"].schema.properties.file,
+    upload.requestBody.content["multipart/form-data"].schema.properties.file,
     { type: "string", format: "binary" },
   );
-  assert.equal(formBody.required, true);
-
-  assert.deepEqual(response, {
-    $ref: "#/components/responses/NotFound",
-  });
+  assert.equal(upload.requestBody.required, true);
+  assert.equal(items.get.responses["404"].description, "Entity not found");
   assert.equal(
-    overriddenResponse.content["application/problem+json"].schema.$ref,
+    upload.responses["400"].content["application/problem+json"].schema.$ref,
     "#/components/schemas/Problem",
   );
-  assert.equal(overriddenResponse.$ref, undefined);
 
+  // …and still lists them as reusable components.
   assert.deepEqual(converted.components.parameters.Limit, {
     name: "limit",
     in: "query",
     schema: { type: "integer", format: "int32" },
   });
   assert.equal(
-    converted.components.requestBodies.Payload.content[
-      "application/json"
-    ].schema.$ref,
+    converted.components.requestBodies.Payload.content["application/json"]
+      .schema.$ref,
     "#/components/schemas/Payload",
   );
+  assert.deepEqual(converted.components.schemas.formData_Upload, {
+    type: "string",
+    format: "binary",
+  });
   assert.equal(
-    converted.components.responses.NotFound.content[
-      "application/json"
-    ].schema.$ref,
+    converted.components.responses.NotFound.content["application/json"]
+      .schema.$ref,
     "#/components/schemas/Problem",
   );
 });
@@ -260,6 +200,9 @@ test("every emitted local reference resolves to an output component", () => {
 });
 
 test("keeps external schema and response references unchanged", () => {
+  // Swagger's online converter rejects documents like this one because it
+  // tries to download the referenced files. SpecLift never makes network
+  // requests, so it converts the document and leaves the refs alone.
   const converted = convertSwagger({
     swagger: "2.0",
     info: { title: "External references", version: "1.0.0" },
@@ -283,9 +226,32 @@ test("keeps external schema and response references unchanged", () => {
     "responses.json#/responses/Success",
   );
   assert.equal(
-    converted.paths["/external"].get.responses["201"].content[
-      "application/json"
-    ].schema.$ref,
+    converted.paths["/external"].get.responses["201"].content["*/*"].schema
+      .$ref,
     "models.json#/definitions/Created",
+  );
+});
+
+test("does not modify the input document", () => {
+  const input = structuredClone(referenceFixture);
+  input.parameters.Limit["x-example"] = 10;
+  const snapshot = structuredClone(input);
+
+  convertSwagger(input);
+  assert.deepEqual(input, snapshot);
+});
+
+test("rejects documents that are not Swagger 2.0", () => {
+  assert.throws(
+    () => convertSwagger({ openapi: "3.0.0", info: {}, paths: {} }),
+    /"swagger": "2.0"/,
+  );
+  assert.throws(
+    () => convertSwagger({ swagger: "2.0", paths: {} }),
+    /"info"/,
+  );
+  assert.throws(
+    () => convertSwagger({ swagger: "2.0", info: { title: "x", version: "1" } }),
+    /"paths"/,
   );
 });
