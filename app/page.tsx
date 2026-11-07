@@ -37,6 +37,7 @@ import { parseSpec, serializeSpec, type SpecFormat } from "./spec-format";
 
 const REPO_URL = "https://github.com/dante0747/spec-lift";
 const SPONSOR_URL = "https://github.com/sponsors/dante0747";
+const AUTHOR_URL = "https://coderator.dev";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const LIVE_LIMIT = 2 * 1024 * 1024;
 
@@ -953,7 +954,13 @@ export default function Home() {
             <LogoMark className="brand-mark" />
             SpecLift
           </span>
-          <p>Private Swagger 2.0 → OpenAPI 3 conversion. MIT licensed.</p>
+          <p>
+            Private Swagger 2.0 → OpenAPI 3 conversion. MIT licensed. Made by{" "}
+            <a href={AUTHOR_URL} target="_blank" rel="author noreferrer">
+              Majid Abarghooei
+            </a>
+            .
+          </p>
           <div className="footer-links">
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <GitHubIcon /> Source
