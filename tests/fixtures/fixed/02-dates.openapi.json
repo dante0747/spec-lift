@@ -1,0 +1,100 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Dates",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/events": {
+      "post": {
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "default": "2021-01-01",
+              "enum": [
+                "2021-01-01",
+                "2021-12-31"
+              ]
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": "2021-01-01T10:00:00+02:00",
+              "enum": [
+                "2021-01-01T10:00:00.500+02:00"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "format": "date"
+              },
+              "example": "2021-06-15"
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "body"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Event": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "example": "2021-01-01",
+            "default": "2021-01-01",
+            "enum": [
+              "2021-01-01"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "default": "2021-01-01T10:00:00+02:00",
+            "enum": [
+              "2021-01-01T10:00:00+02:00"
+            ]
+          }
+        }
+      },
+      "Holiday": {
+        "type": "string",
+        "format": "date",
+        "default": "2021-12-25",
+        "enum": [
+          "2021-12-25",
+          "2021-12-26"
+        ]
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

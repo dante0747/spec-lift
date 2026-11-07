@@ -1,0 +1,61 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "File types",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/files": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "query",
+            "type": "file"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "X-Attachment": {
+                "type": "file",
+                "description": "odd but allowed"
+              }
+            },
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "file"
+              }
+            }
+          },
+          "201": {
+            "description": "file",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Attachment": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "file",
+          "description": "bytes"
+        }
+      }
+    },
+    "RawFile": {
+      "type": "file",
+      "description": "a whole file"
+    }
+  }
+}

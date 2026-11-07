@@ -1,0 +1,84 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "File types",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/files": {
+      "get": {
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "X-Attachment": {
+                "description": "odd but allowed",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "bytes",
+            "format": "binary"
+          }
+        }
+      },
+      "RawFile": {
+        "type": "string",
+        "description": "a whole file",
+        "format": "binary"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

@@ -1,0 +1,70 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "String examples",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/notes": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "text": "hello"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "note"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Note": {
+        "type": "string",
+        "example": {
+          "text": "hello"
+        }
+      },
+      "Wrapper": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "example": {
+              "text": "hi"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

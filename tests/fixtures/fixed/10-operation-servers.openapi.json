@@ -1,0 +1,69 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Operation servers",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com/v1"
+    }
+  ],
+  "paths": {
+    "/legacy": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "servers": [
+          {
+            "url": "http://api.example.com/v1"
+          }
+        ]
+      }
+    },
+    "/both": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        },
+        "servers": [
+          {
+            "url": "https://api.example.com/v1"
+          },
+          {
+            "url": "http://api.example.com/v1"
+          }
+        ]
+      }
+    },
+    "/same": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/none": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

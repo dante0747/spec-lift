@@ -159,13 +159,32 @@ export function parseSpec(source: string): ParsedSpec {
 
   if (format === "json") {
     try {
-      const value: unknown = JSON.parse(source);
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        (value as Record<string, unknown>).swagger === 2
+      // Browsers with JSON.parse source access hand the reviver the raw
+      // number text, so `"version": 1.0` can stay "1.0" like Swagger's.
+      const versionSources = new Map<unknown, string>();
+      const reviver = function (
+        this: unknown,
+        key: string,
+        value: unknown,
+        context?: { source?: string },
       ) {
-        (value as Record<string, unknown>).swagger = "2.0";
+        if (key === "version" && typeof value === "number" && context?.source) {
+          versionSources.set(this, context.source);
+        }
+        return value;
+      };
+      const value: unknown = JSON.parse(
+        source,
+        reviver as Parameters<typeof JSON.parse>[1],
+      );
+      if (typeof value === "object" && value !== null) {
+        const document = value as Record<string, unknown>;
+        if (document.swagger === 2) document.swagger = "2.0";
+        const info = document.info as Record<string, unknown> | undefined;
+        const raw = versionSources.get(info);
+        if (info && typeof info.version === "number" && raw && /[.eE]/.test(raw)) {
+          info.version = javaDoubleText(info.version);
+        }
       }
       return { ok: true, format, value };
     } catch (error) {

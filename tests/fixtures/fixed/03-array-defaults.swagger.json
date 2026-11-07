@@ -1,0 +1,60 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Array defaults",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/search": {
+      "post": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "tags",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "new",
+              "sale"
+            ]
+          },
+          {
+            "name": "X-Ids",
+            "in": "header",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "default": [
+              1,
+              2
+            ],
+            "collectionFormat": "csv"
+          },
+          {
+            "name": "colors",
+            "in": "formData",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "red"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  }
+}

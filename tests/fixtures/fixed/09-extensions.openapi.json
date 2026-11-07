@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Extensions",
+    "contact": {
+      "name": "Team",
+      "email": "team@example.com",
+      "x-slack": "#api"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/ping": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {}
+          },
+          "x-rate-limited": true
+        }
+      }
+    },
+    "x-generated": true
+  },
+  "components": {},
+  "x-original-swagger-version": "2.0"
+}

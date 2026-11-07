@@ -1,0 +1,68 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Form enums",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/order": {
+      "post": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "quantity",
+            "in": "formData",
+            "type": "integer",
+            "enum": [
+              1,
+              5,
+              10
+            ],
+            "default": 1
+          },
+          {
+            "name": "weight",
+            "in": "formData",
+            "type": "number",
+            "format": "float",
+            "enum": [
+              0.5,
+              2
+            ]
+          },
+          {
+            "name": "gift",
+            "in": "formData",
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ]
+          },
+          {
+            "name": "size",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "S",
+              "M"
+            ]
+          },
+          {
+            "name": "note",
+            "in": "formData",
+            "type": "string",
+            "enum": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  }
+}

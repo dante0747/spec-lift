@@ -1,0 +1,107 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Shared objects",
+    "version": "1.0.0"
+  },
+  "consumes": [
+    "application/json",
+    "application/xml"
+  ],
+  "paths": {
+    "/pets/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string",
+          "x-example": "p-1"
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Page"
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Limit"
+          },
+          {
+            "name": "pet",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "discriminator": "kind",
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "nickname": {
+                  "type": "string",
+                  "x-nullable": true
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Page"
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Limit": {
+      "name": "limit",
+      "in": "query",
+      "type": "integer",
+      "format": "int32",
+      "x-example": 20,
+      "x-nullable": true
+    }
+  },
+  "responses": {
+    "Page": {
+      "description": "page",
+      "headers": {
+        "X-Next": {
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Animal": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Base"
+        }
+      ],
+      "x-nullable": true
+    },
+    "Base": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

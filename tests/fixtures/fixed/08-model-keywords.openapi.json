@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Model keywords",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Settings": {
+        "maxProperties": 5,
+        "minProperties": 1,
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "readOnly": true
+      },
+      "Tags": {
+        "type": "array",
+        "readOnly": true,
+        "items": {
+          "type": "string"
+        }
+      },
+      "Pet": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          }
+        },
+        "discriminator": {
+          "propertyName": "kind"
+        }
+      },
+      "Cat": {
+        "readOnly": true,
+        "example": {
+          "kind": "cat",
+          "lives": 9
+        },
+        "externalDocs": {
+          "description": "Cats",
+          "url": "https://example.com/cats"
+        },
+        "discriminator": {
+          "propertyName": "kind"
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Pet"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lives": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

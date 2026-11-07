@@ -1,0 +1,88 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Dates",
+    "version": "1.0.0"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "paths": {
+    "/events": {
+      "post": {
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "type": "string",
+            "format": "date",
+            "default": "2021-01-01",
+            "enum": [
+              "2021-01-01",
+              "2021-12-31"
+            ]
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "type": "string",
+            "format": "date-time",
+            "default": "2021-01-01T10:00:00+02:00",
+            "enum": [
+              "2021-01-01T10:00:00.500+02:00"
+            ]
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "examples": {
+              "application/json": "2021-06-15"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Event": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "format": "date",
+          "default": "2021-01-01",
+          "enum": [
+            "2021-01-01"
+          ],
+          "example": "2021-01-01"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "default": "2021-01-01T10:00:00+02:00",
+          "enum": [
+            "2021-01-01T10:00:00+02:00"
+          ]
+        }
+      }
+    },
+    "Holiday": {
+      "type": "string",
+      "format": "date",
+      "default": "2021-12-25",
+      "enum": [
+        "2021-12-25",
+        "2021-12-26"
+      ]
+    }
+  }
+}

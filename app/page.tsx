@@ -126,9 +126,45 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** Local `#/...` references in the output that point at nothing. */
+function unresolvedRefs(document: JsonRecord): string[] {
+  const missing = new Set<string>();
+  const resolve = (pointer: string) =>
+    pointer
+      .slice(2)
+      .split("/")
+      .map((token) => token.replace(/~1/g, "/").replace(/~0/g, "~"))
+      .reduce<unknown>(
+        (node, token) =>
+          isRecord(node) || Array.isArray(node)
+            ? (node as Record<string, unknown>)[token]
+            : undefined,
+        document,
+      );
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+    } else if (isRecord(node)) {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === "$ref" && typeof value === "string") {
+          if (value.startsWith("#/") && resolve(value) === undefined) {
+            missing.add(value);
+          }
+        } else {
+          visit(value);
+        }
+      }
+    }
+  };
+  visit(document);
+  return [...missing];
+}
+
 function initialConversion() {
   const result = assess(SAMPLES[0].source);
-  return result.document ? convertSwagger(result.document) : null;
+  return result.document
+    ? convertSwagger(result.document, { fixSwaggerBugs: true })
+    : null;
 }
 
 const HERO_BEFORE = `swagger: "2.0"
@@ -163,6 +199,41 @@ const MAPPINGS = [
   ["#/definitions/…", "#/components/schemas/…"],
 ] as const;
 
+const BUG_FIXES = [
+  {
+    swagger: "type: file inside schemas stays file",
+    fixed: "type: string, format: binary",
+  },
+  {
+    swagger: 'date defaults become "…T00:00:00.000+00:00"',
+    fixed: 'dates stay "2021-01-01"',
+  },
+  {
+    swagger: 'array defaults become text "[\\"a\\"]"',
+    fixed: 'real arrays ["a"]',
+  },
+  {
+    swagger: 'numeric form enums become ["1", "5"]',
+    fixed: "numbers stay numbers",
+  },
+  {
+    swagger: 'object examples become Java text "{a=1}"',
+    fixed: "examples stay JSON",
+  },
+  {
+    swagger: "shared params lose example / nullable after first use",
+    fixed: "every use keeps them",
+  },
+  {
+    swagger: "defaults, enums, readOnly, discriminators silently dropped",
+    fixed: "kept in the output",
+  },
+  {
+    swagger: "operation schemes and x- extensions dropped",
+    fixed: "operation servers and extensions kept",
+  },
+] as const;
+
 export default function Home() {
   const [input, setInput] = useState(SAMPLES[0].source);
   const [sampleId, setSampleId] = useState(SAMPLES[0].id);
@@ -175,6 +246,8 @@ export default function Home() {
   const [outputFormat, setOutputFormat] = useState<SpecFormat>("json");
   const [outputPinned, setOutputPinned] = useState(false);
   const [live, setLive] = useState(true);
+  const [fixBugs, setFixBugs] = useState(true);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(
     "Sample converted. Paste your own Swagger 2.0 spec to begin.",
@@ -208,7 +281,7 @@ export default function Home() {
   }, [converted]);
 
   const runConversion = useCallback(
-    (source: string, quiet = false) => {
+    (source: string, quiet = false, fix = fixBugs) => {
       const result = assess(source);
       if (!result.document) {
         if (!quiet) setError(result.message);
@@ -216,14 +289,17 @@ export default function Home() {
       }
       try {
         const started = performance.now();
-        const next = convertSwagger(result.document);
+        const next = convertSwagger(result.document, { fixSwaggerBugs: fix });
         const elapsed = performance.now() - started;
         setConverted(next);
         setLastConvertedInput(source);
         setError("");
+        setWarnings(unresolvedRefs(next));
         if (!outputPinned) setOutputFormat(result.format);
         setNotice(
-          `Converted in ${elapsed < 1 ? "<1" : Math.round(elapsed)} ms, entirely in this tab.`,
+          `Converted in ${elapsed < 1 ? "<1" : Math.round(elapsed)} ms${
+            fix ? " with Swagger's bugs fixed" : " in Swagger-exact mode"
+          }, entirely in this tab.`,
         );
         setPulse((value) => value + 1);
       } catch (conversionError) {
@@ -234,7 +310,7 @@ export default function Home() {
         );
       }
     },
-    [outputPinned],
+    [outputPinned, fixBugs],
   );
 
   // Live mode converts shortly after typing stops.
@@ -342,10 +418,19 @@ export default function Home() {
 
   const inputFileName = `swagger.${assessment.format === "json" ? "json" : "yaml"}`;
   const outputFileName = `openapi.${outputFormat === "json" ? "json" : "yaml"}`;
+  const hasProblem = Boolean(error) || assessment.status === "invalid";
+  const hasWarning = !hasProblem && !outputIsStale && warnings.length > 0;
   const statusMessage =
     error ||
-    (assessment.status === "invalid" ? assessment.message : notice);
-  const hasProblem = Boolean(error) || assessment.status === "invalid";
+    (assessment.status === "invalid"
+      ? assessment.message
+      : hasWarning
+        ? `${notice} ${warnings.length} reference${
+            warnings.length === 1 ? " points" : "s point"
+          } to nothing: ${warnings.slice(0, 3).join(", ")}${
+            warnings.length > 3 ? ", …" : ""
+          }`
+        : notice);
 
   return (
     <div className="page">
@@ -382,9 +467,9 @@ export default function Home() {
       <main>
         <section className="hero shell" id="top" aria-labelledby="hero-title">
           <div className="hero-copy-block">
-            <a className="eyebrow" href="#parity">
+            <a className="eyebrow" href="#bugs">
               <span className="eyebrow-dot" aria-hidden="true" />
-              Matches Swagger&apos;s official converter
+              Swagger&apos;s converter, minus its bugs
               <ArrowRightIcon />
             </a>
             <h1 id="hero-title">
@@ -392,9 +477,10 @@ export default function Home() {
               <span className="gradient-text">OpenAPI&nbsp;3</span>
             </h1>
             <p className="hero-copy">
-              Drop in a Swagger 2.0 spec as JSON or YAML and get the same
-              OpenAPI 3 output Swagger&apos;s converter produces. Every step
-              runs in your browser. Nothing leaves this browser.
+              Drop in a Swagger 2.0 spec as JSON or YAML and get the OpenAPI 3
+              output Swagger&apos;s official converter produces, with its bugs
+              fixed. Every step runs in your browser. Nothing leaves this
+              browser.
             </p>
             <div className="hero-actions">
               <a className="primary-button" href="#converter">
@@ -614,7 +700,9 @@ export default function Home() {
             >
               <div className="panel-heading">
                 <div className="panel-title">
-                  <span className="panel-kicker is-new">OpenAPI 3.0</span>
+                  <span className="panel-kicker is-new">
+                    OpenAPI 3.0 · {fixBugs ? "bugs fixed" : "Swagger-exact"}
+                  </span>
                   <h2>{outputFileName}</h2>
                 </div>
                 <div className="panel-actions">
@@ -676,26 +764,47 @@ export default function Home() {
 
           <div className="conversion-bar">
             <div
-              className={`conversion-message ${hasProblem ? "has-error" : ""}`}
+              className={`conversion-message ${hasProblem ? "has-error" : ""} ${
+                hasWarning ? "has-warning" : ""
+              }`}
               id="conversion-message"
               role="status"
               aria-live="polite"
             >
               <span className="message-symbol" aria-hidden="true">
-                {hasProblem ? "!" : <CheckIcon />}
+                {hasProblem || hasWarning ? "!" : <CheckIcon />}
               </span>
               <span>{statusMessage}</span>
             </div>
             <div className="conversion-actions">
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={live}
-                  onChange={(event) => setLive(event.target.checked)}
-                />
-                <span className="toggle-track" aria-hidden="true" />
-                Live convert
-              </label>
+              <div className="conversion-options">
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={live}
+                    onChange={(event) => setLive(event.target.checked)}
+                  />
+                  <span className="toggle-track" aria-hidden="true" />
+                  Live convert
+                </label>
+                <label
+                  className="toggle"
+                  title="Off gives byte-for-byte the same output as converter.swagger.io"
+                >
+                  <input
+                    type="checkbox"
+                    checked={fixBugs}
+                    onChange={(event) => {
+                      setFixBugs(event.target.checked);
+                      if (assessment.status === "valid" && converted) {
+                        runConversion(input, true, event.target.checked);
+                      }
+                    }}
+                  />
+                  <span className="toggle-track" aria-hidden="true" />
+                  Fix Swagger bugs
+                </label>
+              </div>
               <span className="shortcut-hint" aria-hidden="true">
                 <kbd>Ctrl</kbd>
                 <kbd>Enter</kbd>
@@ -737,6 +846,30 @@ export default function Home() {
           </ul>
         </section>
 
+        <section className="bugs-section shell" id="bugs">
+          <div className="section-intro">
+            <span className="section-label">Swagger&apos;s bugs, fixed</span>
+            <h2>
+              Same rules. <span className="gradient-text">Fewer surprises.</span>
+            </h2>
+            <p>
+              In a few places Swagger&apos;s converter writes invalid OpenAPI or
+              quietly drops data. SpecLift fixes these by default. Turn off
+              &ldquo;Fix Swagger bugs&rdquo; for byte-for-byte Swagger output.
+            </p>
+          </div>
+          <ul className="bug-grid">
+            {BUG_FIXES.map((bug) => (
+              <li key={bug.swagger}>
+                <span className="bug-label is-swagger">Swagger</span>
+                <code>{bug.swagger}</code>
+                <span className="bug-label is-fixed">SpecLift</span>
+                <code className="is-fixed">{bug.fixed}</code>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <section className="trust-section shell" id="privacy">
           <div className="section-intro">
             <span className="section-label">Private by design</span>
@@ -771,11 +904,11 @@ export default function Home() {
               <span className="trust-icon">
                 <ScaleIcon />
               </span>
-              <h3>Same output as Swagger</h3>
+              <h3>Swagger-exact on demand</h3>
               <p>
-                Output is identical to converter.swagger.io, key order
-                included, across 99 real-world APIs and 54 edge-case
-                fixtures that run as tests.
+                With bug fixes off, output is identical to
+                converter.swagger.io, key order included. That is tested on 99
+                real-world APIs and 54 edge-case fixtures.
               </p>
             </article>
           </div>

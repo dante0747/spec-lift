@@ -1,0 +1,66 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "String examples",
+    "version": "1.0.0"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/notes": {
+      "post": {
+        "parameters": [
+          {
+            "name": "note",
+            "in": "body",
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "application/json": {
+                "text": "hello"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "application/json": [
+                "a",
+                "b"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Note": {
+      "type": "string",
+      "example": {
+        "text": "hello"
+      }
+    },
+    "Wrapper": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string",
+          "example": {
+            "text": "hi"
+          }
+        }
+      }
+    }
+  }
+}

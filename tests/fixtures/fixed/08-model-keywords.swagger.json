@@ -1,0 +1,64 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Model keywords",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "definitions": {
+    "Settings": {
+      "type": "object",
+      "readOnly": true,
+      "minProperties": 1,
+      "maxProperties": 5,
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "readOnly": true
+    },
+    "Pet": {
+      "type": "object",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        }
+      }
+    },
+    "Cat": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Pet"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lives": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      ],
+      "discriminator": "kind",
+      "example": {
+        "kind": "cat",
+        "lives": 9
+      },
+      "externalDocs": {
+        "url": "https://example.com/cats",
+        "description": "Cats"
+      },
+      "readOnly": true
+    }
+  }
+}

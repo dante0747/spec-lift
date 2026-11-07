@@ -1,0 +1,183 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Shared objects",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/pets/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p-1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            },
+            "example": 20
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "page",
+            "headers": {
+              "X-Next": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            },
+            "content": {}
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p-1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            },
+            "example": 20
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "kind"
+                ],
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "discriminator": {
+                  "propertyName": "kind"
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "required": [
+                  "kind"
+                ],
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "discriminator": {
+                  "propertyName": "kind"
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "page",
+            "headers": {
+              "X-Next": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            },
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "pet"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Animal": {
+        "nullable": true,
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Base"
+          }
+        ]
+      },
+      "Base": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Page": {
+        "description": "page",
+        "headers": {
+          "X-Next": {
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        },
+        "content": {}
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "format": "int32",
+          "nullable": true
+        },
+        "example": 20
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

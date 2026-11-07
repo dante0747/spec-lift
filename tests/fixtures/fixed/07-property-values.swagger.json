@@ -1,0 +1,85 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Property values",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/stats": {
+      "get": {
+        "parameters": [
+          {
+            "name": "levels",
+            "in": "query",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3
+              ],
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "X-Count": {
+                "type": "integer",
+                "default": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Stats": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "default": 0,
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "ratio": {
+          "type": "number",
+          "default": 0.5,
+          "enum": [
+            0.5,
+            1.5
+          ]
+        },
+        "big": {
+          "type": "integer",
+          "format": "uint64",
+          "default": 10
+        },
+        "active": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "since": {
+          "type": "string",
+          "format": "date",
+          "default": "2020-01-01"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date-time",
+          "default": "2020-01-01T00:00:00Z"
+        }
+      }
+    }
+  }
+}

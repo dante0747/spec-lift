@@ -68,6 +68,19 @@ test("reads unquoted swagger and info versions as Swagger does", () => {
   assert.equal(parsed.value.info.version, "1.0");
 });
 
+test("reads numeric JSON versions as Swagger does", () => {
+  const parsed = parseSpec(
+    '{"swagger": 2.0, "info": {"title": "t", "version": 1.0}, "paths": {},' +
+      ' "x-meta": {"title": "t", "version": 1.0}}',
+  );
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.value.swagger, "2.0");
+  // Swagger formats the number like Java's Double.toString: 1.0 stays "1.0".
+  assert.equal(parsed.value.info.version, "1.0");
+  // Only info.version is text in Swagger; other numbers stay numbers.
+  assert.equal(parsed.value["x-meta"].version, 1);
+});
+
 test("reports YAML and JSON syntax errors with a line number", () => {
   const yaml = parseSpec('swagger: "2.0"\ninfo: [oops\n  title: x\n');
   assert.equal(yaml.ok, false);

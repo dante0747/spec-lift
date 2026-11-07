@@ -1,0 +1,25 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Extensions",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Team",
+      "email": "team@example.com",
+      "x-slack": "#api"
+    }
+  },
+  "paths": {
+    "x-generated": true,
+    "/ping": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "x-rate-limited": true
+        }
+      }
+    }
+  }
+}

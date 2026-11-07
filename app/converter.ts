@@ -10,8 +10,10 @@
  *      order Jackson uses for swagger-core's models (`emit*`).
  *
  * Swagger's quirks are reproduced on purpose (they are marked "Swagger
- * quirk") so the output matches converter.swagger.io exactly. Everything
- * runs locally: nothing here touches the network.
+ * quirk") so the output matches converter.swagger.io exactly. With the
+ * `fixSwaggerBugs` option the bugs among them are fixed instead (marked
+ * "Fix n", see `ConvertOptions`); everything else stays the same.
+ * Everything runs locally: nothing here touches the network.
  */
 
 import {
@@ -34,6 +36,34 @@ export const HTTP_METHODS = new Set([
   "patch",
   "trace",
 ]);
+
+export type ConvertOptions = {
+  /**
+   * Fix the Swagger converter bugs that produce invalid OpenAPI 3.0 or drop
+   * information. Off by default, which matches converter.swagger.io exactly.
+   *
+   *  1. `type: file` in schemas becomes `type: string, format: binary`.
+   *  2. Date and date-time values keep their original text.
+   *  3. Array parameter defaults stay arrays (not JSON text).
+   *  4. Number/integer/boolean form-field enums stay typed.
+   *  5. Object/array examples on string schemas keep their JSON value.
+   *  6. Shared parameters, headers and schemas keep example/nullable/
+   *     discriminator on every use.
+   *  7. Properties keep default/enum Swagger drops for some types/formats.
+   *  8. Models keep readOnly/minProperties/maxProperties; allOf models keep
+   *     example/externalDocs/discriminator.
+   *  9. Contact extensions and x- keys of Paths/Responses objects are kept.
+   * 10. Operation `schemes` become operation `servers` when they differ.
+   */
+  fixSwaggerBugs?: boolean;
+};
+
+/**
+ * Whether the current `convertSwagger` call fixes Swagger's bugs. Conversion
+ * is synchronous, so a module-level flag set for the duration of one call is
+ * safe and saves threading it through every helper.
+ */
+let fixBugs = false;
 
 /* -------------------------------------------------------------------------- */
 /* Java compatibility helpers                                                 */
@@ -113,10 +143,16 @@ function isNotBlank(value: string | null | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/** Swagger quirk: removes x-example/x-examples/x-nullable from the source. */
+/**
+ * Drops x-example/x-examples/x-nullable from copied extensions.
+ * Swagger quirk: it deletes them from the shared source object, so the next
+ * use of the same parameter/header/schema loses its example and nullable.
+ * Fix 6: work on a copy instead.
+ */
 function stripExtensions(ext: Ext): Ext {
-  for (const key of STRIPPED_EXTENSIONS) delete ext[key];
-  return ext;
+  const target = fixBugs ? { ...ext } : ext;
+  for (const key of STRIPPED_EXTENSIONS) delete target[key];
+  return target;
 }
 
 function readNullable(ext: Ext | null | undefined): boolean | undefined {
@@ -250,6 +286,8 @@ interface V1Property {
   required: boolean;
   /** A `java.util.HashMap` in Swagger, so keys are kept in hash order. */
   ext: Ext;
+  /** The JSON this was read from (null for synthesized properties). */
+  source: JsonRecord | null;
 }
 
 interface V1ModelImpl {
@@ -276,6 +314,7 @@ interface V1ModelImpl {
   properties: Record<string, V1Property> | null;
   additionalProperties: V1Property | null;
   ext: Ext;
+  source: JsonRecord;
 }
 
 interface V1ArrayModel {
@@ -290,6 +329,7 @@ interface V1ArrayModel {
   xml: V1Xml | null;
   properties: Record<string, V1Property> | null;
   ext: Ext;
+  source: JsonRecord;
 }
 
 interface V1ComposedModel {
@@ -299,6 +339,7 @@ interface V1ComposedModel {
   allOf: V1Model[];
   properties: Record<string, V1Property> | null;
   ext: Ext;
+  source: JsonRecord;
 }
 
 interface V1RefModel {
@@ -360,6 +401,7 @@ interface V1SerializableParameter {
   items: V1Property | null;
   collectionFormat: string | null;
   ext: Ext;
+  source: JsonRecord;
 }
 
 type V1Parameter = V1RefParameter | V1BodyParameter | V1SerializableParameter;
@@ -393,6 +435,7 @@ interface V1Operation {
   deprecated: boolean | null;
   security: Record<string, string[]>[] | null;
   ext: Ext;
+  source: JsonRecord;
 }
 
 /** Operation names in the order Swagger's v1 `Path` stores them. */
@@ -445,7 +488,12 @@ interface V1Info {
   title: string | null;
   description: string | null;
   termsOfService: string | null;
-  contact: { name: string | null; url: string | null; email: string | null } | null;
+  contact: {
+    name: string | null;
+    url: string | null;
+    email: string | null;
+    ext: Ext;
+  } | null;
   license: { name: string | null; url: string | null; ext: Ext } | null;
   version: string | null;
   ext: Ext;
@@ -468,6 +516,8 @@ interface V1Swagger {
   tags: V1Tag[] | null;
   externalDocs: V1ExternalDocs | null;
   ext: Ext | null;
+  /** x- keys of the Paths object, which Swagger drops. */
+  pathsExt: Ext;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -566,6 +616,7 @@ function emptyProperty(cls: PropertyClass, type: string | null): V1Property {
     booleanValue: null,
     required: false,
     ext: {},
+    source: null,
   };
 }
 
@@ -641,6 +692,10 @@ const NUMERIC_CLASSES = new Set<PropertyClass>([
   "Decimal",
 ]);
 
+function nonEmpty<T>(values: T[]): T[] | null {
+  return values.length > 0 ? values : null;
+}
+
 function parseJavaInteger(text: string, bits: 32 | 64): number | null {
   if (!/^[+-]?\d+$/.test(text)) return null;
   const value = Number(text);
@@ -706,11 +761,11 @@ function buildProperty(
       if (defaultValue !== null) {
         property.default = parseJavaInteger(defaultValue, bits) ?? undefined;
       }
-      property.enum = enumValues
-        ? enumValues
-            .map((value) => parseJavaInteger(value, bits))
-            .filter((value): value is number => value !== null)
-        : null;
+      property.enum = nonEmpty(
+        (enumValues ?? [])
+          .map((value) => parseJavaInteger(value, bits))
+          .filter((value): value is number => value !== null),
+      );
       break;
     }
     case "Float":
@@ -718,11 +773,11 @@ function buildProperty(
       if (defaultValue !== null) {
         property.default = parseJavaFloat(defaultValue) ?? undefined;
       }
-      property.enum = enumValues
-        ? enumValues
-            .map(parseJavaFloat)
-            .filter((value): value is number => value !== null)
-        : null;
+      property.enum = nonEmpty(
+        (enumValues ?? [])
+          .map(parseJavaFloat)
+          .filter((value): value is number => value !== null),
+      );
       break;
     case "Boolean":
       if (defaultValue !== null) {
@@ -744,8 +799,15 @@ function buildProperty(
   return property;
 }
 
-/** swagger-core v1 `PropertyDeserializer.propertyFromNode`. */
+/** Reads a property and remembers the JSON it came from. */
 function readProperty(node: unknown): V1Property | null {
+  const property = readPropertyNode(node);
+  if (property && isRecord(node)) property.source = node;
+  return property;
+}
+
+/** swagger-core v1 `PropertyDeserializer.propertyFromNode`. */
+function readPropertyNode(node: unknown): V1Property | null {
   if (typeof node === "boolean") {
     const property = emptyProperty("BooleanValue", null);
     property.booleanValue = node;
@@ -930,6 +992,7 @@ function readModel(node: JsonRecord): V1Model {
       allOf,
       properties,
       ext: readExtensions(node),
+      source: node,
     };
   }
 
@@ -949,6 +1012,7 @@ function readModel(node: JsonRecord): V1Model {
       xml: readXml(node),
       properties: readModelProperties(node),
       ext: readExtensions(node),
+      source: node,
     };
   }
 
@@ -971,11 +1035,11 @@ function readModel(node: JsonRecord): V1Model {
     description: readString(node, "description"),
     example,
     default: readString(node, "default"),
-    enum: enumValues
-      ? enumValues
-          .filter((value) => typeof value !== "object" || value === null)
-          .map(asText)
-      : null,
+    enum: nonEmpty(
+      (enumValues ?? [])
+        .filter((value) => typeof value !== "object" || value === null)
+        .map(asText),
+    ),
     minimum: readNumber(node, "minimum"),
     maximum: readNumber(node, "maximum"),
     exclusiveMinimum: readBoolean(node, "exclusiveMinimum"),
@@ -991,6 +1055,7 @@ function readModel(node: JsonRecord): V1Model {
     properties,
     additionalProperties,
     ext: readExtensions(node),
+    source: node,
   };
 }
 
@@ -1065,6 +1130,7 @@ function readParameter(node: JsonRecord): V1Parameter | null {
     items: null,
     collectionFormat: null,
     ext: readExtensions(node),
+    source: node,
   };
 
   const enumValues = readArray(node, "enum");
@@ -1202,6 +1268,7 @@ function readOperation(node: JsonRecord): V1Operation {
     deprecated: readBoolean(node, "deprecated"),
     security: readSecurity(node, "security"),
     ext: readExtensions(node),
+    source: node,
   };
 }
 
@@ -1268,6 +1335,20 @@ function readSecurityScheme(node: JsonRecord): V1SecurityScheme | null {
 
 const V1_SCHEMES = ["http", "https", "ws", "wss"];
 
+/** Known schemes, lower-cased and de-duplicated, as Swagger keeps them. */
+function readSchemes(node: JsonRecord): string[] | null {
+  const schemes = readArray(node, "schemes");
+  if (!schemes) return null;
+  return [
+    ...new Set(
+      schemes
+        .filter((scheme): scheme is string => typeof scheme === "string")
+        .map((scheme) => scheme.toLowerCase())
+        .filter((scheme) => V1_SCHEMES.includes(scheme)),
+    ),
+  ];
+}
+
 function readSwagger(node: JsonRecord): V1Swagger {
   const info = readObject(node, "info");
   const contact = info ? readObject(info, "contact") : null;
@@ -1311,7 +1392,6 @@ function readSwagger(node: JsonRecord): V1Swagger {
   }
 
   const tags = readArray(node, "tags");
-  const schemes = readArray(node, "schemes");
   const ext = readExtensions(node);
 
   return {
@@ -1326,6 +1406,7 @@ function readSwagger(node: JsonRecord): V1Swagger {
                 name: readString(contact, "name"),
                 url: readString(contact, "url"),
                 email: readString(contact, "email"),
+                ext: readExtensions(contact),
               }
             : null,
           license: license
@@ -1341,16 +1422,7 @@ function readSwagger(node: JsonRecord): V1Swagger {
       : null,
     host: readString(node, "host"),
     basePath: readString(node, "basePath"),
-    schemes: schemes
-      ? [
-          ...new Set(
-            schemes
-              .filter((scheme): scheme is string => typeof scheme === "string")
-              .map((scheme) => scheme.toLowerCase())
-              .filter((scheme) => V1_SCHEMES.includes(scheme)),
-          ),
-        ]
-      : null,
+    schemes: readSchemes(node),
     consumes: readStringList(node, "consumes"),
     produces: readStringList(node, "produces"),
     paths,
@@ -1369,6 +1441,7 @@ function readSwagger(node: JsonRecord): V1Swagger {
       : null,
     externalDocs: readExternalDocs(readObject(node, "externalDocs")),
     ext: Object.keys(ext).length > 0 ? ext : null,
+    pathsExt: readExtensions(readObject(node, "paths") ?? {}),
   };
 }
 
@@ -1561,7 +1634,9 @@ class Schema3 {
     // swagger-core's DateSchema mixin prints examples as yyyy-MM-dd.
     this.set(
       "example",
-      this.cls === "Date" ? castDateExample(value) : castSchemaValue(this.cls, value),
+      this.cls === "Date" && !keepsOriginal(this.cls, value)
+        ? castDateExample(value)
+        : castSchemaValue(this.cls, value),
     );
   }
 
@@ -1576,7 +1651,7 @@ class Schema3 {
         ? values.map((value) =>
             !cast
               ? value
-              : this.cls === "DateTime"
+              : this.cls === "DateTime" && !keepsOriginal(this.cls, value)
                 ? castDateTime(value, true)
                 : castSchemaValue(this.cls, value),
           )
@@ -1686,8 +1761,24 @@ function castUuid(value: unknown): string | null {
 }
 
 /** Each swagger-core schema subclass coerces default/enum/example values. */
+/**
+ * Values the bug-fixing mode passes through unchanged. Fix 2: date and
+ * date-time text (Swagger turns dates into timestamps and moves date-times to
+ * UTC). Fix 5: objects and arrays on string schemas (Swagger stores Java's
+ * `toString()`, e.g. `{a=1}`).
+ */
+function keepsOriginal(cls: SchemaClass, value: unknown): boolean {
+  if (!fixBugs) return false;
+  if (cls === "Date" || cls === "DateTime") return typeof value === "string";
+  if (cls === "String" || cls === "Email" || cls === "Password") {
+    return typeof value === "object" && value !== null;
+  }
+  return false;
+}
+
 function castSchemaValue(cls: SchemaClass, value: unknown): unknown {
   if (value === null || value === undefined) return null;
+  if (keepsOriginal(cls, value)) return value;
   switch (cls) {
     case "String":
     case "Email":
@@ -1889,6 +1980,63 @@ const STRING_PROPERTY_CLASSES = new Set<PropertyClass>([
   "UUID",
 ]);
 
+/**
+ * Swagger reads property examples as text, so an object or array example
+ * becomes "". Fix 5: keep the JSON value.
+ */
+function propertyExample(property: V1Property): unknown {
+  const raw = property.source?.example;
+  if (fixBugs && typeof raw === "object" && raw !== null) return raw;
+  return property.example;
+}
+
+/** Fix 7: classes whose default Swagger drops, and those whose enum it drops. */
+const DROPPED_DEFAULT_CLASSES = new Set<PropertyClass>([
+  "BaseInteger",
+  "Decimal",
+  "Date",
+  "DateTime",
+]);
+const DROPPED_ENUM_CLASSES = new Set<PropertyClass>([
+  "BaseInteger",
+  "Decimal",
+  "Boolean",
+]);
+
+/** A value of the schema's type, or null when it doesn't fit. */
+function typedValue(cls: SchemaClass, value: unknown): unknown {
+  if (cls === "Boolean") {
+    if (typeof value === "boolean") return value;
+    return typeof value === "string" && /^(true|false)$/i.test(value)
+      ? value.toLowerCase() === "true"
+      : null;
+  }
+  return castSchemaValue(cls, value);
+}
+
+/**
+ * Fix 7: Swagger's property classes for integer/number without a known
+ * format, booleans, and dates have no slot for some of default/enum, so it
+ * drops them. Put them back, typed for the schema.
+ */
+function restoreDroppedValues(property: V1Property, schema: Schema3) {
+  const source = property.source;
+  if (!source) return;
+  if (DROPPED_DEFAULT_CLASSES.has(property.cls) && source.default !== undefined) {
+    schema.set("default", typedValue(schema.cls, source.default));
+  }
+  if (DROPPED_ENUM_CLASSES.has(property.cls) && Array.isArray(source.enum)) {
+    schema.set(
+      "enum",
+      nonEmpty(
+        source.enum
+          .map((value) => typedValue(schema.cls, value))
+          .filter((value) => value !== null),
+      ),
+    );
+  }
+}
+
 /** `SwaggerConverter.convert(Property)`. */
 function convertProperty(property: V1Property | null | undefined): Schema3 | null {
   if (!property) return null;
@@ -1914,7 +2062,10 @@ function convertProperty(property: V1Property | null | undefined): Schema3 | nul
     schema.set("minItems", property.minItems);
     if (property.uniqueItems) schema.set("uniqueItems", true);
   } else if (property.cls === "File") {
-    schema = new Schema3("File", property.type, property.format ?? "binary");
+    // Fix 1: "file" isn't an OpenAPI 3 type.
+    schema = fixBugs
+      ? new Schema3("File", "string", "binary")
+      : new Schema3("File", property.type, property.format ?? "binary");
     schema.set("title", property.title);
     schema.set("description", property.description);
     schema.set("readOnly", property.readOnly);
@@ -1935,11 +2086,13 @@ function convertProperty(property: V1Property | null | undefined): Schema3 | nul
     schema.set("description", property.description);
     schema.set("readOnly", property.readOnly);
     schema.set("xml", convertXml(property.xml));
-    if (property.example !== undefined) schema.setExample(property.example);
+    const example = propertyExample(property);
+    if (example !== undefined) schema.setExample(example);
     if (PROPERTY_DEFAULT_CLASSES.has(property.cls)) {
       schema.setDefault(property.default);
     }
     if (PROPERTY_ENUM_CLASSES.has(property.cls)) schema.setEnum(property.enum);
+    if (fixBugs) restoreDroppedValues(property, schema);
     if (NUMERIC_CLASSES.has(property.cls)) {
       schema.set("minimum", property.minimum);
       schema.set("maximum", property.maximum);
@@ -2006,6 +2159,7 @@ function convertModel(model: V1Model | null): Schema3 | null {
     schema.set("properties", convertProperties(model.properties));
     schema.set("items", convertProperty(model.items));
     schema.ext = model.ext;
+    if (fixBugs) restoreModelKeywords(model.source, schema, false);
   } else if (model.kind === "composed") {
     schema = new Schema3("Composed");
     schema.set("description", model.description);
@@ -2020,16 +2174,33 @@ function convertModel(model: V1Model | null): Schema3 | null {
     );
     schema.set("required", requiredNames(model.properties));
     schema.set("properties", convertProperties(model.properties));
+    if (fixBugs) {
+      // Fix 8: Swagger's allOf model has no slot for these.
+      restoreModelKeywords(model.source, schema, true);
+      if (model.source.example !== undefined) {
+        schema.set("example", model.source.example);
+      }
+      schema.set(
+        "externalDocs",
+        convertExternalDocs(readExternalDocs(readObject(model.source, "externalDocs"))),
+      );
+      const discriminator = readString(model.source, "discriminator");
+      if (discriminator !== null) {
+        schema.set("discriminator", { propertyName: discriminator });
+      }
+    }
   } else {
     // Swagger quirk: the discriminator is cleared on the source model, so a
-    // second conversion of the same inline schema loses it.
+    // second conversion of the same inline schema loses it (fix 6).
     const discriminator = model.discriminator;
-    model.discriminator = null;
+    if (!fixBugs) model.discriminator = null;
 
     const hasAdditional = model.additionalProperties !== null;
     schema =
       model.type === "file"
-        ? new Schema3("File", "file", model.format ?? "binary")
+        ? fixBugs
+          ? new Schema3("File", "string", "binary") // Fix 1
+          : new Schema3("File", "file", model.format ?? "binary")
         : new Schema3(
             schemaClassFor(model.type, model.format, hasAdditional),
             model.type ?? "object",
@@ -2067,10 +2238,27 @@ function convertModel(model: V1Model | null): Schema3 | null {
       schema.set("discriminator", { propertyName: discriminator });
     }
     schema.ext = model.ext;
+    if (fixBugs) restoreModelKeywords(model.source, schema, true);
   }
 
   schema.set("nullable", readNullable(model.ext));
   return schema;
+}
+
+/**
+ * Fix 8: keywords Swagger's v1 models don't read. `minProperties` and
+ * `maxProperties` only apply to object-like models.
+ */
+function restoreModelKeywords(
+  source: JsonRecord,
+  schema: Schema3,
+  objectLike: boolean,
+) {
+  schema.set("readOnly", readBoolean(source, "readOnly"));
+  if (objectLike) {
+    schema.set("minProperties", readInteger(source, "minProperties"));
+    schema.set("maxProperties", readInteger(source, "maxProperties"));
+  }
 }
 
 /** `ModelImpl.getDefaultValue`: typed for integer/number models. */
@@ -2227,6 +2415,10 @@ function convertSecurityScheme(scheme: V1SecurityScheme): JsonRecord {
 
 /** `AbstractSerializableParameter.getDefault`: typed by parameter type. */
 function parameterDefault(parameter: V1SerializableParameter): unknown {
+  // Fix 3: Swagger keeps array defaults as JSON text.
+  if (fixBugs && parameter.type === "array" && Array.isArray(parameter.source.default)) {
+    return parameter.source.default;
+  }
   const value = parameter.defaultValue;
   if (value === null || value === "") return null;
   if (parameter.type === "integer") {
@@ -2308,6 +2500,8 @@ function convertParameter(
       schema.set("maxItems", parameter.maxItems);
       schema.set("minItems", parameter.minItems);
       schema.set("uniqueItems", parameter.uniqueItems);
+    } else if (fixBugs && parameter.type === "file") {
+      schema = new Schema3("File", "string", "binary"); // Fix 1
     } else {
       schema = new Schema3(
         schemaClassForParameter(parameter.type, parameter.format),
@@ -2377,7 +2571,13 @@ function convertFormParameter(parameter: V1SerializableParameter): Schema3 {
 
   schema.set("description", parameter.description);
   schema.set("readOnly", parameter.readOnly);
-  schema.setEnum(parameter.enum, false);
+  // Swagger quirks: form enums stay strings even for numbers (fix 4), and an
+  // empty `enum: []` is copied although OpenAPI 3.0 forbids it (also fixed).
+  const typed = fixBugs && ["Integer", "Number", "Boolean"].includes(schema.cls);
+  const enumValues = typed
+    ? parameter.enum?.map((value) => typedValue(schema.cls, value) ?? value)
+    : parameter.enum;
+  schema.setEnum(fixBugs ? nonEmpty(enumValues ?? []) : enumValues, false);
   schema.set("maxItems", parameter.maxItems);
   schema.set("minItems", parameter.minItems);
   schema.set("uniqueItems", parameter.uniqueItems);
@@ -2433,7 +2633,7 @@ function addMediaExamples(
       continue;
     }
     const cast =
-      media.schema.cls === "Date"
+      media.schema.cls === "Date" && !keepsOriginal("Date", example)
         ? castDate(example)
         : castSchemaValue(media.schema.cls, example);
     media.example = cast;
@@ -2643,6 +2843,13 @@ function convertOperation(
         responses[code] = convertResponse(response, operation.produces, state);
       }
     }
+    if (fixBugs) {
+      // Fix 9: Swagger drops x- keys of the Responses object.
+      Object.assign(
+        responses,
+        readExtensions(readObject(operation.source, "responses") ?? {}),
+      );
+    }
     values.responses = responses;
   }
 
@@ -2650,7 +2857,26 @@ function convertOperation(
   if (operation.security) {
     values.security = operation.security.map((requirement) => ({ ...requirement }));
   }
+  if (fixBugs) values.servers = operationServers(operation, state);
   return ordered(values, OPERATION_KEYS, ext);
+}
+
+/**
+ * Fix 10: Swagger drops operation-level `schemes`. Turn them into operation
+ * `servers` (same URL rules as the document's) when they differ from the
+ * document's servers.
+ */
+function operationServers(
+  operation: V1Operation,
+  state: ConverterState,
+): JsonRecord[] | undefined {
+  const schemes = readSchemes(operation.source);
+  if (!schemes || schemes.length === 0) return undefined;
+  const servers = convertServers({ ...state.swagger, schemes });
+  const documentServers = convertServers(state.swagger);
+  return JSON.stringify(servers) === JSON.stringify(documentServers)
+    ? undefined
+    : servers;
 }
 
 /** The order `SwaggerConverter.convert(Path)` converts operations in. */
@@ -2729,9 +2955,13 @@ function convertInfo(info: V1Info): JsonRecord {
       title: info.title,
       description: info.description,
       termsOfService: info.termsOfService,
-      // Swagger quirk: contact extensions are dropped.
+      // Swagger quirk: contact extensions are dropped (fix 9 keeps them).
       contact: info.contact
-        ? ordered({ ...info.contact }, ["name", "url", "email"])
+        ? ordered(
+            info.contact,
+            ["name", "url", "email"],
+            fixBugs ? stripExtensions(info.contact.ext) : null,
+          )
         : undefined,
       license: info.license
         ? ordered(
@@ -2808,6 +3038,8 @@ function convertDocument(swagger: V1Swagger): JsonRecord {
   for (const [name, path] of Object.entries(swagger.paths)) {
     paths[name] = convertPath(path, state);
   }
+  // Fix 9: Swagger drops x- keys of the Paths object.
+  if (fixBugs) Object.assign(paths, swagger.pathsExt);
   values.paths = paths;
 
   for (const [name, response] of Object.entries(swagger.responses ?? {})) {
@@ -2833,9 +3065,13 @@ function convertDocument(swagger: V1Swagger): JsonRecord {
 
 /**
  * Converts a parsed Swagger 2.0 document to OpenAPI 3.0.1, producing the same
- * document as Swagger's online converter.
+ * document as Swagger's online converter, or, with `fixSwaggerBugs`, that
+ * document with Swagger's bugs fixed.
  */
-export function convertSwagger(swagger: JsonRecord): JsonRecord {
+export function convertSwagger(
+  swagger: JsonRecord,
+  options: ConvertOptions = {},
+): JsonRecord {
   if (swagger.swagger !== "2.0") {
     throw new Error('Expected a Swagger document with "swagger": "2.0".');
   }
@@ -2846,10 +3082,15 @@ export function convertSwagger(swagger: JsonRecord): JsonRecord {
     throw new Error('The document is missing the required "paths" object.');
   }
 
-  // Work on a copy: Swagger's conversion mutates its own model as it goes.
-  const model = readSwagger(structuredClone(swagger));
-  resolveSwagger(model);
-  return convertDocument(model);
+  fixBugs = options.fixSwaggerBugs === true;
+  try {
+    // Work on a copy: Swagger's conversion mutates its own model as it goes.
+    const model = readSwagger(structuredClone(swagger));
+    resolveSwagger(model);
+    return convertDocument(model);
+  } finally {
+    fixBugs = false;
+  }
 }
 
 export function countOperations(paths: unknown) {

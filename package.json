@@ -1,8 +1,28 @@
 {
   "name": "speclift",
-  "version": "1.0.0",
-  "private": true,
+  "version": "2.0.0",
+  "description": "Private, browser-only Swagger 2.0 to OpenAPI 3 converter with Swagger's conversion rules, minus Swagger's bugs.",
+  "keywords": [
+    "swagger",
+    "openapi",
+    "openapi3",
+    "swagger2",
+    "converter",
+    "api",
+    "yaml",
+    "privacy"
+  ],
+  "homepage": "https://dante0747.github.io/spec-lift/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dante0747/spec-lift.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dante0747/spec-lift/issues"
+  },
   "license": "MIT",
+  "private": true,
+  "type": "module",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -11,9 +31,10 @@
     "build": "vinext build",
     "build:pages": "node scripts/build-pages.mjs",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/converter-refs.test.mjs tests/converter.test.mjs tests/parity.test.mjs tests/parity-yaml.test.mjs",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/converter-refs.test.mjs tests/converter.test.mjs tests/parity.test.mjs tests/parity-yaml.test.mjs tests/fixed-mode.test.mjs tests/oas3-validity.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "parity:check": "node scripts/parity-check.mjs tests/fixtures/parity"
+    "parity:check": "node scripts/parity-check.mjs tests/fixtures/parity",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "5.3.0",
@@ -33,6 +54,8 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
+    "ajv": "8.20.0",
+    "ajv-draft-04": "1.0.0",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "react-server-dom-webpack": "19.2.6",
@@ -41,6 +64,5 @@
     "vinext": "0.0.50",
     "vite": "8.1.5",
     "wrangler": "4.92.0"
-  },
-  "type": "module"
+  }
 }
