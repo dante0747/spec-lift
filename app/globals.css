@@ -1615,8 +1615,22 @@ kbd {
   font-size: 14px;
 }
 
+.footer-inner p a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: rgba(143, 155, 179, 0.4);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.footer-inner p a:hover {
+  color: var(--text-strong);
+}
+
 .footer-links {
   display: flex;
+  flex: none;
   gap: 18px;
   color: var(--muted);
   font-size: 14px;
