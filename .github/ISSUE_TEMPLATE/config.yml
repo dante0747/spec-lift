@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/dante0747/spec-lift/security/advisories/new
     about: Please report vulnerabilities privately, not in a public issue.
   - name: Try SpecLift
-    url: https://dante0747.github.io/spec-lift/
+    url: https://speclift.coderator.dev/
     about: The live converter runs entirely in your browser.

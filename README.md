@@ -14,7 +14,7 @@ Swagger's official conversion rules, minus Swagger's bugs.
 ![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-9b8bff)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff7ac6?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/dante0747)
 
-[**Open the converter**](https://dante0747.github.io/spec-lift/) ·
+[**Open the converter**](https://speclift.coderator.dev/) ·
 [Report a bug](https://github.com/dante0747/spec-lift/issues/new?template=bug_report.yml) ·
 [Request a feature](https://github.com/dante0747/spec-lift/issues/new?template=feature_request.yml) ·
 [Sponsor](https://github.com/sponsors/dante0747)
@@ -56,7 +56,7 @@ places where Swagger's output is invalid or loses data.
 
 ## Quick start
 
-Use it online at **[dante0747.github.io/spec-lift](https://dante0747.github.io/spec-lift/)**,
+Use it online at **[speclift.coderator.dev](https://speclift.coderator.dev/)**,
 or run it locally (Node.js 22.13 or newer):
 
 ```bash
