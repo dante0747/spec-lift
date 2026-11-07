@@ -270,6 +270,55 @@ svg {
   height: 18px;
 }
 
+/* Sponsor badge: a plain link, so the page makes no request to GitHub. */
+.nav-links .sponsor-badge,
+.sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  margin-left: 6px;
+  padding: 0 13px 0 11px;
+  border: 1px solid rgba(255, 122, 198, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 122, 198, 0.08);
+  color: #ffc4e6;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+}
+
+.nav-links .sponsor-badge:hover,
+.sponsor-badge:hover {
+  border-color: rgba(255, 122, 198, 0.75);
+  background: rgba(255, 122, 198, 0.16);
+  color: #ffffff;
+}
+
+.sponsor-badge svg {
+  width: 15px;
+  height: 15px;
+  color: var(--pink);
+}
+
+.sponsor-badge:hover svg {
+  animation: heartbeat 0.9s ease-in-out infinite;
+}
+
+.sponsor-badge.is-large {
+  flex: none;
+  min-height: 50px;
+  margin: 0;
+  padding: 0 22px 0 18px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.sponsor-badge.is-large svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
@@ -1504,6 +1553,37 @@ kbd {
   color: var(--muted);
 }
 
+.sponsor-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-top: 120px;
+  padding: 36px 40px;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  background:
+    radial-gradient(90% 140% at 100% 0%, rgba(255, 122, 198, 0.14), transparent 60%),
+    linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+    linear-gradient(120deg, rgba(255, 122, 198, 0.45), rgba(148, 163, 184, 0.12) 45%, rgba(155, 139, 255, 0.4)) border-box;
+}
+
+.sponsor-band h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--display);
+  font-size: clamp(24px, 2.8vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.sponsor-band p {
+  max-width: 620px;
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
 /* ---------- Footer ---------- */
 
 .site-footer {
@@ -1551,6 +1631,14 @@ kbd {
 
 .footer-links a:hover {
   color: var(--text-strong);
+}
+
+.footer-links .footer-sponsor svg {
+  color: var(--pink);
+}
+
+.footer-links .footer-sponsor:hover {
+  color: #ffc4e6;
 }
 
 /* ---------- Motion ---------- */
@@ -1619,6 +1707,19 @@ kbd {
   100% {
     opacity: 0;
     transform: translateY(-50px);
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.25);
+  }
+  60% {
+    transform: scale(0.95);
   }
 }
 
@@ -1725,8 +1826,27 @@ kbd {
     width: calc(100% - 32px);
   }
 
-  .nav-links a:not(.nav-icon) {
+  .nav-links a:not(.nav-icon):not(.sponsor-badge) {
     display: none;
+  }
+
+  .nav-links .sponsor-badge {
+    padding: 0 10px;
+  }
+
+  .nav-links .sponsor-badge span {
+    display: none;
+  }
+
+  .sponsor-band {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 88px;
+    padding: 28px 22px;
+  }
+
+  .sponsor-badge.is-large {
+    justify-content: center;
   }
 
   .hero {

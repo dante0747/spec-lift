@@ -12,10 +12,12 @@ Swagger's official conversion rules, minus Swagger's bugs.
 [![Swagger parity](https://img.shields.io/badge/Swagger%20parity-99%2F99%20real%20APIs-b8f84a)](#swagger-parity)
 [![License: MIT](https://img.shields.io/badge/license-MIT-38e1ff)](LICENSE)
 ![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-9b8bff)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff7ac6?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/dante0747)
 
 [**Open the converter**](https://dante0747.github.io/spec-lift/) ·
 [Report a bug](https://github.com/dante0747/spec-lift/issues/new?template=bug_report.yml) ·
-[Request a feature](https://github.com/dante0747/spec-lift/issues/new?template=feature_request.yml)
+[Request a feature](https://github.com/dante0747/spec-lift/issues/new?template=feature_request.yml) ·
+[Sponsor](https://github.com/sponsors/dante0747)
 
 <img src="public/og.png" alt="SpecLift converting a Swagger 2.0 spec to OpenAPI 3" width="880" />
 
@@ -187,6 +189,12 @@ object in memory, and creates downloads from a temporary `Blob`. Conversion
 makes no network requests, and fonts are bundled with the site. Hosting the
 static files can still produce ordinary web-server access logs, but spec
 contents never reach the host. See [SECURITY.md](SECURITY.md).
+
+## Support the project
+
+SpecLift is free and MIT-licensed. If it saves you time, consider
+[sponsoring its development on GitHub](https://github.com/sponsors/dante0747).
+It keeps the converter maintained and current with Swagger.
 
 ## Contributing
 

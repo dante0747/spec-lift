@@ -23,6 +23,7 @@ import {
   DownloadIcon,
   EyeOffIcon,
   GitHubIcon,
+  HeartIcon,
   LockIcon,
   LogoMark,
   ScaleIcon,
@@ -35,6 +36,7 @@ import { SAMPLES } from "./samples";
 import { parseSpec, serializeSpec, type SpecFormat } from "./spec-format";
 
 const REPO_URL = "https://github.com/dante0747/spec-lift";
+const SPONSOR_URL = "https://github.com/sponsors/dante0747";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const LIVE_LIMIT = 2 * 1024 * 1024;
 
@@ -451,6 +453,16 @@ export default function Home() {
             <a href="#converter">Converter</a>
             <a href="#mapping">What changes</a>
             <a href="#privacy">Privacy</a>
+            <a
+              className="sponsor-badge"
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Sponsor SpecLift on GitHub"
+            >
+              <HeartIcon />
+              <span>Sponsor</span>
+            </a>
             <a
               className="nav-icon"
               href={REPO_URL}
@@ -913,6 +925,26 @@ export default function Home() {
             </article>
           </div>
         </section>
+
+        <section className="sponsor-band shell" aria-labelledby="sponsor-title">
+          <div>
+            <h2 id="sponsor-title">Free, open source, and staying that way.</h2>
+            <p>
+              If SpecLift saves you an afternoon of hand-migrating specs,
+              sponsoring keeps it maintained and bug-for-bug current with
+              Swagger.
+            </p>
+          </div>
+          <a
+            className="sponsor-badge is-large"
+            href={SPONSOR_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <HeartIcon />
+            <span>Sponsor on GitHub</span>
+          </a>
+        </section>
       </main>
 
       <footer className="site-footer">
@@ -925,6 +957,14 @@ export default function Home() {
           <div className="footer-links">
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <GitHubIcon /> Source
+            </a>
+            <a
+              className="footer-sponsor"
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <HeartIcon /> Sponsor
             </a>
             <a href="#top">Back to top ↑</a>
           </div>

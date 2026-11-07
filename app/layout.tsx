@@ -17,10 +17,15 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
+  // The .ico is marked 32x32 so browsers that support SVG icons pick the SVG.
   icons: {
-    icon: `${basePath}/favicon.svg`,
-    shortcut: `${basePath}/favicon.svg`,
+    icon: [
+      { url: `${basePath}/favicon.ico`, sizes: "32x32" },
+      { url: `${basePath}/favicon.svg`, type: "image/svg+xml" },
+    ],
+    apple: { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180" },
   },
+  manifest: `${basePath}/site.webmanifest`,
   openGraph: {
     type: "website",
     siteName: "SpecLift",

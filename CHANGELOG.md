@@ -4,6 +4,24 @@ All notable changes to SpecLift are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-11-07
+
+### Added
+
+- Sponsor links: a badge in the header, a sponsor section, a footer link, a
+  README badge, and `.github/FUNDING.yml`. They are plain links, so the page
+  still makes no third-party requests.
+- A web app manifest with 192 px, 512 px and maskable icons.
+
+### Fixed
+
+- Favicon missing where SVG icons aren't supported: added `favicon.ico`
+  (16/32/48 px) and an Apple touch icon.
+
+### Removed
+
+- Unused default Next.js images in `public/`.
+
 ## [2.0.0] - 2026-11-07
 
 ### Added
@@ -46,5 +64,6 @@ All notable changes to SpecLift are documented here. The format follows
 - First release: a private, browser-only converter from Swagger 2.0 JSON to
   OpenAPI 3.0.3, deployable to GitHub Pages.
 
-[2.0.0]: https://github.com/dante0747/spec-lift/compare/8987791...HEAD
+[2.0.1]: https://github.com/dante0747/spec-lift/compare/173652e...HEAD
+[2.0.0]: https://github.com/dante0747/spec-lift/compare/8987791...173652e
 [1.0.0]: https://github.com/dante0747/spec-lift/tree/8987791

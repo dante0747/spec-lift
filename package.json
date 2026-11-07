@@ -1,6 +1,6 @@
 {
   "name": "speclift",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Private, browser-only Swagger 2.0 to OpenAPI 3 converter with Swagger's conversion rules, minus Swagger's bugs.",
   "keywords": [
     "swagger",
